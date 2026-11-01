@@ -1,0 +1,22 @@
+[package]
+name = "diplomat_peak"
+version = "1.0.0"
+edition = "2021"
+description = "The Diplomat Peak - Das letzte Kapitel. First-person psychological horror in an abandoned mountain resort."
+authors = ["Gorgii"]
+
+[dependencies]
+bevy = { version = "0.15.3", features = ["wav"] }
+
+# Bevy is heavy to compile in debug: keep our own code quick to rebuild but
+# always optimise dependencies.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
