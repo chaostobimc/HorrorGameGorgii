@@ -290,7 +290,7 @@ fn movement(
         player.on_ground = false;
     }
 
-    let ceil = ceiling_height(p, RADIUS, HEIGHT, &solid_list);
+    let ceil = ceiling_height(p, RADIUS, &solid_list);
     if p.y + HEIGHT > ceil {
         p.y = ceil - HEIGHT;
         if player.vel_y > 0.0 {
