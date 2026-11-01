@@ -39,6 +39,36 @@ pub enum MenuAction {
     RestartFromEnd,
 }
 
+/// The camera the loading screen, the title menu and the ending are drawn on.
+///
+/// The 3D camera only exists while playing, so without this the UI in `Boot`,
+/// `Title` and `Ending` would have no view to render into and stay invisible.
+#[derive(Component)]
+pub struct MenuCamera;
+
+pub fn spawn_menu_camera(mut commands: Commands, existing: Query<&MenuCamera>) {
+    if existing.iter().next().is_some() {
+        return;
+    }
+    commands.spawn((
+        Camera2d,
+        Camera {
+            order: -1,
+            clear_color: ClearColorConfig::Custom(Color::srgb(0.008, 0.009, 0.011)),
+            ..default()
+        },
+        IsDefaultUiCamera,
+        MenuCamera,
+        Name::new("MenuCamera"),
+    ));
+}
+
+pub fn despawn_menu_camera(mut commands: Commands, existing: Query<Entity, With<MenuCamera>>) {
+    for e in existing.iter() {
+        commands.entity(e).despawn_recursive();
+    }
+}
+
 pub fn spawn_loading(mut commands: Commands, assets: Res<GameAssets>) {
     let title = assets.fonts.title.clone();
     let ui = assets.fonts.ui.clone();

@@ -109,7 +109,17 @@ impl Plugin for UiPlugin {
             )
             .add_systems(OnEnter(AppState::Title), menus::spawn_title)
             .add_systems(OnExit(AppState::Title), menus::cleanup_title)
-            .add_systems(OnEnter(AppState::Boot), menus::spawn_loading)
+            // the loading screen cannot use OnEnter(Boot): the first state
+            // transition runs before PreStartup, i.e. before GameAssets exists
+            .add_systems(
+                PreStartup,
+                (menus::spawn_loading, menus::spawn_menu_camera)
+                    .chain()
+                    .after(crate::core::LoadAssetsSet),
+            )
+            .add_systems(OnEnter(AppState::Title), menus::spawn_menu_camera)
+            .add_systems(OnEnter(AppState::Ending), menus::spawn_menu_camera)
+            .add_systems(OnEnter(AppState::Playing), menus::despawn_menu_camera)
             .add_systems(OnEnter(AppState::Ending), menus::spawn_ending)
             .add_systems(
                 Update,

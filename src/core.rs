@@ -251,6 +251,15 @@ impl Rng {
     }
 }
 
+/// Everything that reads `GameAssets` has to run after this set.
+///
+/// `StatesPlugin` inserts the `StateTransition` schedule *before* `PreStartup`
+/// (see `insert_startup_before(PreStartup, StateTransition)`), so the very first
+/// `OnEnter(AppState::Boot)` fires before `load_assets` ever ran. Screen building
+/// therefore lives in `PreStartup`, ordered after this set.
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LoadAssetsSet;
+
 pub struct CorePlugin;
 
 impl Plugin for CorePlugin {
@@ -258,7 +267,7 @@ impl Plugin for CorePlugin {
         app.init_resource::<Settings>()
             .init_resource::<UiState>()
             .init_resource::<Rng>()
-            .add_systems(PreStartup, load_assets)
+            .add_systems(PreStartup, load_assets.in_set(LoadAssetsSet))
             .add_systems(
                 Update,
                 (tick_loading, print_ready_hint).run_if(in_state(AppState::Boot)),
@@ -516,7 +525,10 @@ fn tick_loading(
     mut waited: Local<f32>,
 ) {
     *waited += time.delta_secs();
-    if *waited > 0.25 && assets.ready(&images, &audio) {
+    let all_loaded = assets.ready(&images, &audio);
+    // the timeout keeps one unreadable file from freezing the game on the
+    // loading screen with no way out
+    if (*waited > 0.25 && all_loaded) || *waited > 25.0 {
         next.set(AppState::Title);
     }
 }
