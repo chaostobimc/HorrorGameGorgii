@@ -262,6 +262,7 @@ pub fn spawn_title(
             for (label, action) in [
                 ("NEUES SPIEL", MenuAction::StartGame),
                 ("EINSTELLUNGEN", MenuAction::OpenSettings),
+                ("STEUERUNG", MenuAction::OpenControls),
                 ("BEENDEN", MenuAction::Quit),
             ] {
                 root.spawn((
