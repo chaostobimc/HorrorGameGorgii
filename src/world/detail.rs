@@ -9,7 +9,13 @@
 use bevy::prelude::*;
 
 use crate::palette::Palette;
-use crate::world::{props, BuildCtx, GROUND};
+use crate::world::{props, BuildCtx, F1, GROUND};
+
+/// Ceiling height of the first floor corridor (see `corridor.rs`).
+const CORRIDOR_CEIL: f32 = 7.9;
+/// Inner faces of the two long corridor walls.
+const CORRIDOR_DOOR_WALL: f32 = -18.175;
+const CORRIDOR_WINDOW_WALL: f32 = -21.8;
 
 pub fn dress(
     commands: &mut Commands,
@@ -19,6 +25,7 @@ pub fn dress(
 ) {
     coffered_ceiling(b, pal);
     floor_inlay(b, pal);
+    corridor_beams(b, pal);
     west_lounge(commands, meshes, pal);
 }
 
@@ -52,7 +59,8 @@ fn coffered_ceiling(b: &mut BuildCtx, pal: &Palette) {
         .box_all(Vec3::new(11.70, 6.90, 0.0), Vec3::new(0.32, 0.20, 19.4), 1.0);
 }
 
-/// A dark stone band inlaid into the marble, one ring inside the walls.
+/// Dark stone bands inlaid into the marble across the entrance axis. They
+/// stay north and south of the lounge islands so nothing overlaps a carpet.
 fn floor_inlay(b: &mut BuildCtx, pal: &Palette) {
     b.mat(&pal.stone);
     for z in [-8.9f32, 8.9] {
@@ -62,17 +70,73 @@ fn floor_inlay(b: &mut BuildCtx, pal: &Palette) {
             1.4,
         );
     }
-    for x in [-10.8f32, 10.8] {
-        b.mb().box_all(
-            Vec3::new(x, 0.006, 0.0),
-            Vec3::new(0.9, 0.012, 18.7),
-            1.4,
-        );
-    }
     // the carpet runner meets the inlay here, so give it an end piece
     b.mat(&pal.wood_h);
     b.mb()
         .box_all(Vec3::new(0.0, 0.007, 5.2), Vec3::new(4.0, 0.014, 0.22), 1.0);
+}
+
+/// The corridor is four metres wide and three high: beams and a skirting give
+/// it the rhythm of a hotel floor instead of the look of a tunnel.
+fn corridor_beams(b: &mut BuildCtx, pal: &Palette) {
+    b.mat(&pal.wood);
+    let mut x = -15.0f32;
+    while x <= 15.0 {
+        b.mb().box_all(
+            Vec3::new(x, CORRIDOR_CEIL - 0.20, -20.0),
+            Vec3::new(0.26, 0.34, 3.7),
+            1.4,
+        );
+        x += 3.0;
+    }
+
+    b.mat(&pal.wood_h);
+    // skirting boards, only on the door side: the window side has sills
+    b.mb().box_all(
+        Vec3::new(0.0, F1 + 0.11, CORRIDOR_DOOR_WALL - 0.06),
+        Vec3::new(31.0, 0.22, 0.12),
+        1.6,
+    );
+    b.mb().box_all(
+        Vec3::new(0.0, F1 + 0.11, CORRIDOR_WINDOW_WALL + 0.06),
+        Vec3::new(31.0, 0.22, 0.12),
+        1.6,
+    );
+    // crown
+    b.mb().box_all(
+        Vec3::new(0.0, CORRIDOR_CEIL - 0.62, CORRIDOR_DOOR_WALL - 0.09),
+        Vec3::new(31.0, 0.20, 0.18),
+        1.2,
+    );
+
+    // pilasters between the room doors, leaving the real door at x 4.5..10.5
+    b.mat(&pal.wallpaper_b);
+    for px in [
+        -14.2f32, -11.6, -9.0, -6.4, -3.8, -1.2, 1.4, 3.8, 11.6, 14.2,
+    ] {
+        b.mb().box_all(
+            Vec3::new(px, F1 + 1.85, CORRIDOR_DOOR_WALL - 0.08),
+            Vec3::new(0.34, 3.7, 0.16),
+            1.0,
+        );
+    }
+
+    // framed pictures between the pilasters
+    for (px, big) in [(-12.9f32, false), (-7.7, true), (-2.5, false), (0.1, true), (12.9, false)] {
+        let (w, h) = if big { (1.10, 1.45) } else { (0.80, 1.05) };
+        b.mat(&pal.wood_h);
+        b.mb().box_all(
+            Vec3::new(px, F1 + 2.05, CORRIDOR_DOOR_WALL - 0.05),
+            Vec3::new(w, h, 0.10),
+            1.0,
+        );
+        b.mat(&pal.painting);
+        b.mb().box_all(
+            Vec3::new(px, F1 + 2.05, CORRIDOR_DOOR_WALL - 0.12),
+            Vec3::new(w - 0.16, h - 0.16, 0.03),
+            1.0,
+        );
+    }
 }
 
 /// Mirrored lounge island on the empty west side of the lobby.
