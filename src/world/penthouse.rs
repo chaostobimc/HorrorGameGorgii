@@ -347,6 +347,11 @@ fn clock_and_secret(
             mb.box_all(Vec3::new(0.0, y, 0.315), Vec3::new(1.02, 0.05, 0.02), 1.0);
         }
         mb.box_all(Vec3::new(0.0, 2.62, 0.315), Vec3::new(0.72, 0.05, 0.02), 1.0);
+        // two setting knobs, one for each hand
+        for x in [-0.42f32, 0.42] {
+            mb.cylinder(Vec3::new(x, 2.48, 0.33), 0.055, 0.06, 12, 1.0, true);
+            mb.box_all(Vec3::new(x, 2.48, 0.36), Vec3::new(0.11, 0.02, 0.02), 1.0);
+        }
     });
     props::spawn_prop(
         commands,
@@ -443,14 +448,14 @@ fn clock_and_secret(
         Transform::from_translation(CLOCK_POS + rot * Vec3::new(0.42, 1.4, 0.36)),
         Interactable::new(Action::ClockLatch, "Geheimmechanismus prüfen", 0.45),
     ));
-    // the hands
+    // the two knobs that set the hands
     commands.spawn((
-        Transform::from_translation(hub + rot * Vec3::new(0.0, 0.0, 0.02)),
-        Interactable::new(Action::ClockHour, "Stundenzeiger drehen", 0.34),
+        Transform::from_translation(CLOCK_POS + rot * Vec3::new(-0.42, 2.48, 0.40)),
+        Interactable::new(Action::ClockHour, "Stundenzeiger drehen", 0.28),
     ));
     commands.spawn((
-        Transform::from_translation(hub - rot * Vec3::new(0.0, 0.24, -0.02)),
-        Interactable::new(Action::ClockMinute, "Minutenzeiger drehen", 0.3),
+        Transform::from_translation(CLOCK_POS + rot * Vec3::new(0.42, 2.48, 0.40)),
+        Interactable::new(Action::ClockMinute, "Minutenzeiger drehen", 0.28),
     ));
 
     // the panel in the east wall, hidden behind the clock

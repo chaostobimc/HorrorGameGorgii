@@ -512,50 +512,38 @@ fn reception(
     assets: &GameAssets,
     rng: &mut Rng,
 ) {
-    // desk
+    // counter, top and the low cabinet against the wall behind it
     b.mat(&pal.wood);
-    b.box_collide(
-        Vec3::new(-7.6, 0.55, -8.05),
-        Vec3::new(6.8, 1.1, 0.95),
-        1.6,
-    );
+    b.box_collide(Vec3::new(-7.6, 0.55, -8.0), Vec3::new(6.8, 1.1, 0.8), 1.6);
     b.mat(&pal.marble);
-    b.box_at(Vec3::new(-7.6, 1.14, -8.05), Vec3::new(7.2, 0.09, 1.2), 1.6);
+    b.box_at(Vec3::new(-7.6, 1.14, -8.0), Vec3::new(7.2, 0.09, 1.05), 1.6);
     b.mat(&pal.wood);
-    b.box_collide(
-        Vec3::new(-7.6, 0.45, -9.45),
-        Vec3::new(6.6, 0.9, 0.45),
-        1.4,
-    );
+    b.box_collide(Vec3::new(-7.6, 0.45, -9.72), Vec3::new(6.6, 0.9, 0.3), 1.4);
 
     // key cabinet on the wall behind
     b.mat(&pal.wood_h);
-    b.box_collide(
-        Vec3::new(-7.6, 2.35, -9.72),
-        Vec3::new(4.6, 1.7, 0.26),
-        1.2,
-    );
+    b.box_collide(Vec3::new(-7.6, 2.35, -9.66), Vec3::new(4.6, 1.7, 0.26), 1.2);
     b.mat(&pal.black);
     for i in 0..6 {
         let x = -9.7 + i as f32 * 0.84;
         b.mb()
-            .box_all(Vec3::new(x, 2.35, -9.57), Vec3::new(0.03, 1.62, 0.05), 1.0);
+            .box_all(Vec3::new(x, 2.35, -9.51), Vec3::new(0.03, 1.62, 0.05), 1.0);
     }
     for i in 0..4 {
         let y = 1.62 + i as f32 * 0.42;
         b.mb()
-            .box_all(Vec3::new(-7.6, y, -9.57), Vec3::new(4.5, 0.025, 0.05), 1.0);
+            .box_all(Vec3::new(-7.6, y, -9.51), Vec3::new(4.5, 0.025, 0.05), 1.0);
     }
     b.mat(&pal.brass_dark);
     for i in 0..18 {
         let x = -9.6 + (i % 6) as f32 * 0.84;
         let y = 1.72 + (i / 6) as f32 * 0.42;
-        b.mb().box_all(Vec3::new(x, y, -9.54), Vec3::new(0.05, 0.14, 0.02), 1.0);
+        b.mb().box_all(Vec3::new(x, y, -9.48), Vec3::new(0.05, 0.14, 0.02), 1.0);
     }
 
     // wall clock above the cabinet
     b.mat(&pal.wood);
-    b.box_at(Vec3::new(-7.6, 4.55, -9.68), Vec3::new(1.1, 1.1, 0.14), 1.0);
+    b.box_at(Vec3::new(-7.6, 4.55, -9.62), Vec3::new(1.1, 1.1, 0.14), 1.0);
     let face = props::mesh_of(meshes, |mb| {
         mb.quad_uv(
             Vec3::new(-0.5, -0.5, 0.0),
@@ -574,54 +562,54 @@ fn reception(
         commands,
         face,
         pal.clock_face.clone(),
-        Transform::from_translation(Vec3::new(-7.6, 4.55, -9.60)),
+        Transform::from_translation(Vec3::new(-7.6, 4.55, -9.54)),
     );
     commands.spawn((
-        Transform::from_translation(Vec3::new(-7.6, 4.55, -9.4)),
+        Transform::from_translation(Vec3::new(-7.6, 4.55, -9.35)),
         Interactable::new(Action::Flavor(3), "Uhr ansehen", 0.5),
     ));
 
-    // the safe in the corner behind the desk
+    // the safe, in the corner where nobody walks
     b.mat(&pal.metal);
-    b.box_collide(
-        Vec3::new(-10.9, 0.55, -9.35),
-        Vec3::new(1.1, 1.1, 0.72),
-        0.7,
-    );
+    b.box_collide(Vec3::new(-11.0, 0.55, -9.0), Vec3::new(1.1, 1.1, 0.72), 0.7);
     b.mat(&pal.brass_dark);
-    b.box_at(Vec3::new(-10.9, 0.55, -8.98), Vec3::new(1.16, 1.16, 0.05), 0.6);
-    // hinge + door leaf
+    b.box_at(Vec3::new(-11.0, 0.55, -8.66), Vec3::new(1.16, 1.16, 0.04), 0.6);
+    // the door leaf slides sideways into the corner when the code is right
     let safe_leaf = props::mesh_of(meshes, |mb| {
-        mb.box_all(Vec3::new(0.51, 0.0, 0.0), Vec3::new(1.02, 1.02, 0.08), 0.6);
-        mb.cylinder(Vec3::new(0.85, 0.0, 0.06), 0.09, 0.06, 12, 1.0, true);
-        mb.box_all(Vec3::new(0.5, 0.34, 0.06), Vec3::new(0.5, 0.16, 0.02), 1.0);
+        mb.box_all(Vec3::new(-11.0, 0.55, -8.63), Vec3::new(1.0, 1.0, 0.08), 0.6);
+        mb.cylinder(Vec3::new(-10.62, 0.55, -8.55), 0.09, 0.06, 12, 1.0, true);
+        mb.box_all(Vec3::new(-11.22, 0.92, -8.55), Vec3::new(0.36, 0.13, 0.02), 1.0);
     });
     commands.spawn((
         Mesh3d(safe_leaf),
         MeshMaterial3d(pal.metal.clone()),
-        Transform::from_translation(Vec3::new(-11.45, 0.55, -8.99)),
-        Swing::new(Quat::IDENTITY, Quat::from_rotation_y(-1.95), 1.4),
+        Transform::IDENTITY,
+        crate::world::Slide::new(Vec3::ZERO, Vec3::new(-1.06, 0.0, 0.0), 1.7),
         SafeDoor,
     ));
-    // keypad
+    // keypad on the front of the safe
     b.mat(&pal.black_metal);
-    b.box_at(Vec3::new(-10.35, 1.02, -8.92), Vec3::new(0.34, 0.40, 0.08), 0.4);
+    b.box_at(
+        Vec3::new(-10.55, 1.0, -8.56),
+        Vec3::new(0.30, 0.36, 0.06),
+        0.4,
+    );
     b.mat(&pal.led_off);
     b.mb()
-        .box_all(Vec3::new(-10.22, 1.18, -8.87), Vec3::new(0.05, 0.05, 0.02), 1.0);
+        .box_all(Vec3::new(-10.44, 1.13, -8.52), Vec3::new(0.05, 0.05, 0.02), 1.0);
     commands.spawn((
-        Transform::from_translation(Vec3::new(-10.35, 1.02, -8.8)),
-        Interactable::new(Action::SafeKeypad, "Tastatur benutzen", 0.42),
+        Transform::from_translation(Vec3::new(-10.55, 1.0, -8.44)),
+        Interactable::new(Action::SafeKeypad, "Tastatur benutzen", 0.4),
     ));
 
     // desk lamp
     b.mat(&pal.brass_dark);
     b.mb()
-        .cylinder(Vec3::new(-5.05, 1.34, -8.45), 0.14, 0.06, 14, 1.0, true);
+        .cylinder(Vec3::new(-5.05, 1.34, -8.15), 0.14, 0.06, 14, 1.0, true);
     b.mb()
-        .cylinder(Vec3::new(-5.05, 1.62, -8.45), 0.025, 0.55, 8, 1.0, false);
+        .cylinder(Vec3::new(-5.05, 1.62, -8.15), 0.025, 0.55, 8, 1.0, false);
     b.mb()
-        .cylinder(Vec3::new(-5.05, 1.92, -8.45), 0.17, 0.22, 14, 1.0, false);
+        .cylinder(Vec3::new(-5.05, 1.92, -8.15), 0.17, 0.22, 14, 1.0, false);
     commands.spawn((
         PointLight {
             color: Color::srgb(1.0, 0.74, 0.46),
@@ -630,7 +618,7 @@ fn reception(
             shadows_enabled: true,
             ..default()
         },
-        Transform::from_translation(Vec3::new(-5.05, 1.85, -8.42)),
+        Transform::from_translation(Vec3::new(-5.05, 1.86, -8.1)),
         crate::world::Flicker {
             base: 1_100.0,
             amp: 0.06,
@@ -652,36 +640,35 @@ fn reception(
 
     // newspaper, the first real clue
     b.mat(&pal.paper);
-    b.box_at(Vec3::new(-6.5, 1.2, -8.15), Vec3::new(0.40, 0.03, 0.55), 0.5);
+    b.box_at(Vec3::new(-6.5, 1.2, -7.95), Vec3::new(0.40, 0.03, 0.55), 0.5);
     commands.spawn((
-        Transform::from_translation(Vec3::new(-6.5, 1.28, -8.15)),
+        Transform::from_translation(Vec3::new(-6.5, 1.28, -7.95)),
         Interactable::new(Action::ReadDeskArticle, "Zeitung lesen", 0.45),
     ));
 
     // brass bell
     b.mat(&pal.brass);
     b.mb()
-        .cylinder(Vec3::new(-9.55, 1.24, -8.25), 0.11, 0.14, 14, 1.0, true);
+        .cylinder(Vec3::new(-9.55, 1.24, -8.0), 0.11, 0.14, 14, 1.0, true);
     b.mb()
-        .cylinder(Vec3::new(-9.55, 1.34, -8.25), 0.03, 0.1, 8, 1.0, false);
+        .cylinder(Vec3::new(-9.55, 1.34, -8.0), 0.03, 0.1, 8, 1.0, false);
     commands.spawn((
-        Transform::from_translation(Vec3::new(-9.55, 1.3, -8.25)),
+        Transform::from_translation(Vec3::new(-9.55, 1.3, -8.0)),
         Interactable::new(Action::Flavor(2), "Glocke läuten", 0.4),
     ));
 
-    // a chair pushed behind the desk, a ledger, an old telephone
-    props::chair(commands, meshes, pal, Vec3::new(-6.2, 0.0, -8.9), 0.4);
+    // a chair, a ledger and the old telephone
+    props::chair(commands, meshes, pal, Vec3::new(-3.9, 0.0, -8.9), 1.9);
     b.mat(&pal.leather);
-    b.box_at(Vec3::new(-9.2, 1.25, -8.5), Vec3::new(0.42, 0.14, 0.32), 0.5);
+    b.box_at(Vec3::new(-9.2, 1.25, -8.1), Vec3::new(0.42, 0.14, 0.32), 0.5);
     b.mat(&pal.black_metal);
-    b.box_at(Vec3::new(-4.85, 1.2, -8.62), Vec3::new(0.26, 0.14, 0.2), 0.4);
-    b.mb()
-        .bar(
-            Vec3::new(-4.85, 1.27, -8.62),
-            Vec3::new(-4.72, 1.36, -8.62),
-            0.05,
-            1.0,
-        );
+    b.box_at(Vec3::new(-4.85, 1.2, -8.1), Vec3::new(0.26, 0.14, 0.2), 0.4);
+    b.mb().bar(
+        Vec3::new(-4.85, 1.27, -8.1),
+        Vec3::new(-4.72, 1.36, -8.1),
+        0.05,
+        1.0,
+    );
 
     let _ = rng.f32();
     let _ = assets;

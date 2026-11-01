@@ -42,6 +42,18 @@ fn switch_pressed(
     mut sfx: EventWriter<PlaySfx>,
 ) {
     for ev in events.read() {
+        if ev.action == Action::Gate {
+            if progress.gate_open {
+                sub.say("Das Gitter steht offen. Dahinter: nur Regen und Ziegel.", 4.0);
+            } else {
+                sfx.send(PlaySfx::flat(assets.snd.metal_ring.clone(), 0.4));
+                sub.say(
+                    "Das Gitter ist verriegelt. Der Notfallschalter hängt neben der Tür.",
+                    5.0,
+                );
+            }
+            continue;
+        }
         if ev.action != Action::EmergencySwitch || finale.stage != 0 {
             continue;
         }
@@ -50,8 +62,7 @@ fn switch_pressed(
             continue;
         }
         sfx.send(PlaySfx::flat(assets.snd.switch_click.clone(), 0.9));
-        // everything dies at once
-        silence.0 = true;
+        // the click still rings out, then everything dies at once
         finale.stage = 1;
         finale.t = 0.0;
         sub.say("", 0.1);
@@ -83,7 +94,10 @@ fn finale_tick(
     match finale.stage {
         // five seconds of absolutely nothing
         1 => {
-            if finale.t > 5.0 {
+            if finale.t > 0.28 && !silence.0 {
+                silence.0 = true;
+            }
+            if finale.t > 5.3 {
                 silence.0 = false;
                 for mut mat in led.iter_mut() {
                     mat.0 = palette.led_green.clone();

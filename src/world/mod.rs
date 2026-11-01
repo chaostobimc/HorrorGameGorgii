@@ -267,7 +267,7 @@ impl Swing {
             to,
             t: 0.0,
             duration,
-            active,
+            active: false,
         }
     }
 }

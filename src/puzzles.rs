@@ -138,6 +138,12 @@ Hinter der Tür liegt ein Treppenhaus, das nach Regen riecht.",
                 }
                 if i == expected {
                     progress.levers.push(i as u8);
+                    // a lever that is down stays down: no second pull by accident
+                    for (_, mut item) in items.iter_mut() {
+                        if item.action == Action::Lever(i as u8) {
+                            item.enabled = false;
+                        }
+                    }
                     sfx.send(PlaySfx::flat(assets.snd.lever_clunk.clone(), 0.7));
                     if progress.levers.len() == 4 {
                         progress.generator = true;
@@ -275,23 +281,23 @@ fn safe_opened(
     mut meshes: ResMut<Assets<Mesh>>,
     mut commands: Commands,
     mut sfx: EventWriter<PlaySfx>,
-    mut door: Query<&mut Swing, With<SafeDoor>>,
+    mut door: Query<&mut Slide, With<SafeDoor>>,
 ) {
     for _ in events.read() {
         if progress.safe_open {
             continue;
         }
         progress.safe_open = true;
-        for mut swing in door.iter_mut() {
-            swing.active = true;
+        for mut slide in door.iter_mut() {
+            slide.active = true;
         }
         // the key, lying in the open safe
         let key_mesh = meshes.add(Mesh::from(Cuboid::new(0.05, 0.02, 0.26)));
         commands.spawn((
             Mesh3d(key_mesh),
             MeshMaterial3d(palette.brass.clone()),
-            Transform::from_translation(Vec3::new(-10.8, 1.02, -8.86))
-                .with_rotation(Quat::from_rotation_y(0.4)),
+            Transform::from_translation(Vec3::new(-10.98, 1.02, -8.76))
+                .with_rotation(Quat::from_rotation_y(0.42)),
             Interactable::new(Action::SafeTakeKey, "Eisenschlüssel nehmen", 0.4),
             SafeKey,
         ));
@@ -329,7 +335,7 @@ fn tick_ride(
             fade.to_black(1.3);
             if ride.t > 1.0 {
                 if let Ok((mut tf, mut pl)) = player.get_single_mut() {
-                    let dest = Vec3::new(-18.2, F2 + 0.05, -20.2);
+                    let dest = Vec3::new(-15.0, F2 + 0.05, -20.2);
                     tf.translation = dest;
                     pl.last_safe = dest;
                     pl.vel_xz = Vec2::ZERO;

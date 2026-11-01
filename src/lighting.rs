@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use crate::audio::LightningStrike;
 use crate::core::{AppState, Rng};
+use crate::ui::screen_fx::ScreenGrade;
 
 #[derive(Component)]
 pub struct MoonLight;
@@ -81,8 +82,12 @@ fn flash_curve(
     time: Res<Time>,
     mut lightning: ResMut<Lightning>,
     mut q: Query<&mut DirectionalLight, With<FlashLight>>,
+    mut grade: ResMut<ScreenGrade>,
 ) {
     if lightning.t <= 0.0 {
+        if grade.flash != 0.0 {
+            grade.flash = 0.0;
+        }
         return;
     }
     let dt = time.delta_secs();
@@ -101,6 +106,7 @@ fn flash_curve(
         (1.0 - (elapsed - 0.24) / 0.6).max(0.0)
     };
     let lux = 6_500.0 * lightning.strength * env;
+    grade.flash = (env * lightning.strength * 0.8).clamp(0.0, 1.0);
     for mut light in q.iter_mut() {
         light.illuminance = lux;
     }
@@ -108,5 +114,6 @@ fn flash_curve(
         for mut light in q.iter_mut() {
             light.illuminance = 0.0;
         }
+        grade.flash = 0.0;
     }
 }

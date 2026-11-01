@@ -85,10 +85,9 @@ fn corridor_shell(
         1.0,
     );
 
-    // guest doors
+    // guest doors, numbers facing the corridor
     for (i, x) in [-13.5f32, -10.0, -6.5, -3.0, 0.5, 3.4].iter().enumerate() {
-        let label = format!("10{}", i + 1);
-        let e = props::door(
+        props::door(
             commands,
             meshes,
             pal,
@@ -96,11 +95,18 @@ fn corridor_shell(
             1.1,
             2.1,
             0.0,
-            Some(&label),
-            Some(assets.fonts.ui.clone()),
+            None,
+            None,
         );
-        let _ = e;
-        b.mat(&pal.wood_h);
+        props::text3d(
+            commands,
+            assets.fonts.ui.clone(),
+            Vec3::new(*x, F1 + 2.36, -18.22),
+            std::f32::consts::PI,
+            0.13,
+            &format!("10{}", i + 1),
+            Color::srgba(0.80, 0.76, 0.66, 0.85),
+        );
         b.solid(
             Vec3::new(*x, F1 + 1.05, -18.0),
             Vec3::new(0.62, 1.08, 0.12),

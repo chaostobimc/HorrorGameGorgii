@@ -85,7 +85,6 @@ pub fn update_material(
     mut materials: ResMut<Assets<ScreenFxMaterial>>,
     q: Query<&MaterialNode<ScreenFxMaterial>>,
 ) {
-    let _ = time;
     for handle in q.iter() {
         if let Some(mat) = materials.get_mut(&handle.0.clone()) {
             mat.params = Vec4::new(
@@ -94,7 +93,7 @@ pub fn update_material(
                 grade.flash,
                 grade.rain,
             );
-            mat.clock = Vec4::new(grade.time, 0.0, 0.0, 0.0);
+            mat.clock = Vec4::new(grade.time + time.elapsed_secs(), 0.0, 0.0, 0.0);
         }
     }
 }

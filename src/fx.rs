@@ -6,6 +6,8 @@ use bevy::prelude::*;
 use crate::audio::LightningStrike;
 use crate::core::{AppState, GameAssets, Rng};
 use crate::geom::MeshBuilder;
+use crate::player::Player;
+use crate::ui::screen_fx::ScreenGrade;
 use crate::world::{F1, F2};
 
 /// A block of falling rain streaks that loops downwards forever.
@@ -35,7 +37,7 @@ impl Plugin for FxPlugin {
         app.add_systems(OnEnter(AppState::Title), spawn_weather)
             .add_systems(
                 Update,
-                (fall_rain, drift_dust, bolt_life, draw_bolts),
+                (fall_rain, drift_dust, bolt_life, draw_bolts, rain_grade),
             );
     }
 }
@@ -241,5 +243,16 @@ fn draw_bolts(
             Bolt { life: 0.16 },
             Name::new("bolt"),
         ));
+    }
+}
+
+/// Rain creeps onto the lens as soon as Gorgii steps out into the storm.
+fn rain_grade(player: Query<&Transform, With<Player>>, mut grade: ResMut<ScreenGrade>) {
+    let Ok(t) = player.get_single() else { return };
+    let p = t.translation;
+    let outdoor = (p.y > 8.4 && p.x > 6.5 && p.x < 23.0) || (p.y < 1.5 && p.z > 8.5);
+    let want = if outdoor { 0.8 } else { 0.0 };
+    if (grade.rain - want).abs() > 0.001 {
+        grade.rain = want;
     }
 }

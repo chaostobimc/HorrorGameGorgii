@@ -757,11 +757,12 @@ pub fn grand_piano(
         Transform::from_translation(pos).with_rotation(rot),
     );
     let keys = mesh_of(meshes, |mb| {
+        // wound so the normal faces up (the key material is single sided)
         mb.quad_uv(
-            Vec3::new(-0.68, 0.94, 1.36),
-            Vec3::new(0.68, 0.94, 1.36),
-            Vec3::new(0.68, 0.94, 1.62),
             Vec3::new(-0.68, 0.94, 1.62),
+            Vec3::new(0.68, 0.94, 1.62),
+            Vec3::new(0.68, 0.94, 1.36),
+            Vec3::new(-0.68, 0.94, 1.36),
             [
                 Vec2::new(0.0, 0.0),
                 Vec2::new(1.0, 0.0),
