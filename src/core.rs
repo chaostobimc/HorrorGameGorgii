@@ -87,32 +87,32 @@ impl Settings {
             let value = value.trim();
             match key.trim() {
                 "sensitivity" => {
-                    if let Ok(x) = value.parse() {
+                    if let Ok(x) = value.parse::<f32>() {
                         s.sensitivity = x.clamp(0.0002, 0.01);
                     }
                 }
                 "volume_master" => {
-                    if let Ok(x) = value.parse() {
+                    if let Ok(x) = value.parse::<f32>() {
                         s.volume_master = x.clamp(0.0, 1.0);
                     }
                 }
                 "volume_ambience" => {
-                    if let Ok(x) = value.parse() {
+                    if let Ok(x) = value.parse::<f32>() {
                         s.volume_ambience = x.clamp(0.0, 1.0);
                     }
                 }
                 "fov" => {
-                    if let Ok(x) = value.parse() {
+                    if let Ok(x) = value.parse::<f32>() {
                         s.fov = x.clamp(50.0, 110.0);
                     }
                 }
                 "head_bob" => {
-                    if let Ok(x) = value.parse() {
+                    if let Ok(x) = value.parse::<f32>() {
                         s.head_bob = x.clamp(0.0, 2.0);
                     }
                 }
                 "grain" => {
-                    if let Ok(x) = value.parse() {
+                    if let Ok(x) = value.parse::<f32>() {
                         s.grain = x.clamp(0.0, 1.0);
                     }
                 }
