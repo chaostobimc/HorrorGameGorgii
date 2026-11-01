@@ -465,21 +465,35 @@ fn load_assets(
 
     let snd = |path: &str| asset_server.load::<AudioSource>(path.to_string());
 
+    // Eigene Klaenge: liegt in `assets/audio/custom/` eine Datei mit demselben
+    // Namen (rain, wind, thunder_far_1 ...), gewinnt sie gegen die generierte.
+    // So lassen sich Regen und Gewitter austauschen, ohne Code anzufassen.
+    let custom = |name: &str, fallback: &str| -> String {
+        for ext in ["wav", "mp3", "ogg", "oga", "flac"] {
+            let on_disk = format!("assets/audio/custom/{}.{}", name, ext);
+            if std::path::Path::new(&on_disk).exists() {
+                println!("[audio] eigener Klang aktiv: {}", on_disk);
+                return format!("audio/custom/{}.{}", name, ext);
+            }
+        }
+        fallback.to_string()
+    };
+
     let sounds = Sounds {
-        rain: snd("audio/rain_loop.wav"),
-        wind: snd("audio/wind_loop.wav"),
+        rain: snd(&custom("rain", "audio/rain_loop.wav")),
+        wind: snd(&custom("wind", "audio/wind_loop.wav")),
         tone: snd("audio/tone_loop.wav"),
         gen_hum: snd("audio/gen_hum_loop.wav"),
         elev: snd("audio/elev_loop.wav"),
         buzz: snd("audio/buzz_loop.wav"),
         thunder_far: vec![
-            snd("audio/thunder_far_1.wav"),
-            snd("audio/thunder_far_2.wav"),
-            snd("audio/thunder_far_3.wav"),
+            snd(&custom("thunder_far_1", "audio/thunder_far_1.wav")),
+            snd(&custom("thunder_far_2", "audio/thunder_far_2.wav")),
+            snd(&custom("thunder_far_3", "audio/thunder_far_3.wav")),
         ],
         thunder_near: vec![
-            snd("audio/thunder_near_1.wav"),
-            snd("audio/thunder_near_2.wav"),
+            snd(&custom("thunder_near_1", "audio/thunder_near_1.wav")),
+            snd(&custom("thunder_near_2", "audio/thunder_near_2.wav")),
         ],
         drip: vec![
             snd("audio/drip_1.wav"),

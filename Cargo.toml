@@ -8,7 +8,9 @@ authors = ["Gorgii"]
 default-run = "diplomat_peak"
 
 [dependencies]
-bevy = { version = "0.15.3", features = ["wav"] }
+# wav fuer die generierten Klaenge, mp3/ogg/flac damit eigene Aufnahmen
+# (z.B. Regen aus einer Videospur) direkt in assets/audio/custom/ liegen koennen
+bevy = { version = "0.15.3", features = ["wav", "mp3", "vorbis", "flac"] }
 
 # The game and the level editor share one library: the editor builds the real
 # hotel and places the real props, so what it writes is what the game loads.

@@ -31,6 +31,23 @@ python3 tools/gen_textures.py     # 28 MB, 1024²/512² inkl. Normal Maps
 python3 tools/gen_audio.py        # 49 WAVs, bandbegrenzt, 16 Bit
 ```
 
+### Eigene Klänge für Regen und Gewitter
+
+Regen, Wind und Donner lassen sich austauschen, ohne Code anzufassen: alles,
+was in `assets/audio/custom/` liegt, gewinnt gegen die generierte Datei.
+
+| Datei | Im Spiel |
+|---|---|
+| `rain.mp3` | Dauerregen (Schleife) |
+| `wind.mp3` | Wind (Schleife) |
+| `thunder_far_1…3.mp3` | fernes Grollen |
+| `thunder_near_1…2.mp3` | naher Schlag |
+
+Erlaubte Endungen: `.wav`, `.mp3`, `.ogg`, `.oga`, `.flac`. Beim Start meldet die
+Konsole `[audio] eigener Klang aktiv: …`. Einzelheiten (Ausschnittlänge,
+Schleifen, Umwandeln von Videospuren) stehen in
+`assets/audio/custom/README.md`.
+
 ## Level-Editor
 
 Der Editor ist ein **eigenes Programm**, kein Teil des Spiels — er nutzt nur
