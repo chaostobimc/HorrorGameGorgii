@@ -34,9 +34,8 @@ impl Plugin for FinalePlugin {
 #[allow(clippy::too_many_arguments)]
 fn switch_pressed(
     mut events: EventReader<Interacted>,
-    mut progress: ResMut<Progress>,
+    progress: Res<Progress>,
     mut finale: ResMut<Finale>,
-    mut silence: ResMut<Silence>,
     mut sub: ResMut<Subtitle>,
     assets: Res<GameAssets>,
     mut sfx: EventWriter<PlaySfx>,
@@ -84,7 +83,6 @@ fn finale_tick(
     mut fade: ResMut<Fade>,
     mut ui: ResMut<UiState>,
     mut exit: EventWriter<AppExit>,
-    player: Query<&Transform, With<Player>>,
     mut lights: Query<(&mut PointLight, Option<&Strobe>)>,
     blockers: Query<Entity, With<GateBlocker>>,
     mut commands: Commands,
@@ -165,8 +163,6 @@ die Schultern die Ziegel streifen.",
             }
         }
     }
-
-    let _ = (&mut ui, &player);
 }
 
 #[derive(Component)]

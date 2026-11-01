@@ -150,50 +150,39 @@ impl Plugin for AudioPlugin {
 }
 
 fn start_ambience(mut commands: Commands, assets: Res<GameAssets>, mut beds: ResMut<AmbienceBeds>) {
-    let spawn_bed = |commands: &mut Commands,
-                     beds: &mut AmbienceBeds,
-                     handle: Handle<AudioSource>,
-                     base: f32,
-                     category: AmbCategory,
-                     slot: &mut Option<Entity>| {
-        let e = commands
-            .spawn((
-                AudioPlayer::new(handle),
-                PlaybackSettings {
-                    mode: PlaybackMode::Loop,
-                    volume: Volume::new(0.0),
-                    ..PlaybackSettings::ONCE
-                },
-                Ambience { base, category },
-            ))
-            .id();
-        *slot = Some(e);
-    };
+    let spawn_bed =
+        |commands: &mut Commands, handle: Handle<AudioSource>, base: f32, category: AmbCategory| -> Entity {
+            commands
+                .spawn((
+                    AudioPlayer::new(handle),
+                    PlaybackSettings {
+                        mode: PlaybackMode::Loop,
+                        volume: Volume::new(0.0),
+                        ..PlaybackSettings::ONCE
+                    },
+                    Ambience { base, category },
+                ))
+                .id()
+        };
 
-    spawn_bed(
+    beds.rain = Some(spawn_bed(
         &mut commands,
-        &mut beds,
         assets.snd.rain.clone(),
         0.62,
         AmbCategory::Rain,
-        &mut beds.rain,
-    );
-    spawn_bed(
+    ));
+    beds.wind = Some(spawn_bed(
         &mut commands,
-        &mut beds,
         assets.snd.wind.clone(),
         0.30,
         AmbCategory::Wind,
-        &mut beds.wind,
-    );
-    spawn_bed(
+    ));
+    beds.tone = Some(spawn_bed(
         &mut commands,
-        &mut beds,
         assets.snd.tone.clone(),
         0.16,
         AmbCategory::Room,
-        &mut beds.tone,
-    );
+    ));
 }
 
 fn play_sfx(
@@ -249,7 +238,7 @@ fn apply_ambience_volume(
     silence: Res<Silence>,
     mut q: Query<(&Ambience, &mut AudioSink)>,
 ) {
-    for (amb, mut sink) in q.iter_mut() {
+    for (amb, sink) in q.iter_mut() {
         let category = match amb.category {
             AmbCategory::Rain | AmbCategory::Wind => settings.volume_ambience,
             AmbCategory::Room => settings.volume_ambience * 0.9,

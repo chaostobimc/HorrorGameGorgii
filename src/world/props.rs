@@ -5,7 +5,6 @@
 
 use bevy::prelude::*;
 
-use crate::core::{GameAssets, Rng};
 use crate::geom::MeshBuilder;
 use crate::palette::Palette;
 

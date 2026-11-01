@@ -405,7 +405,7 @@ pub fn update_letterbox(
 pub fn toggle_journal(
     keys: Res<ButtonInput<KeyCode>>,
     mut journal: ResMut<JournalOpen>,
-    mut ui: ResMut<UiState>,
+    ui: Res<UiState>,
     mut hint: Query<&mut TextColor, With<HintText>>,
     time: Res<Time>,
     mut hint_timer: Local<f32>,

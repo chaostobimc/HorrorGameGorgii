@@ -732,7 +732,7 @@ fn gate_corridor(
     commands: &mut Commands,
     b: &mut BuildCtx,
     pal: &Palette,
-    meshes: &mut Assets<Mesh>,
+    _meshes: &mut Assets<Mesh>,
     assets: &GameAssets,
 ) {
     let h = F2 + 3.4;

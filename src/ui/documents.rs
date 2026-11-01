@@ -295,7 +295,7 @@ fn spawn_journal(commands: &mut Commands, assets: &GameAssets, progress: &Progre
                         btn.spawn((
                             Text::new(format!("{}", label)),
                             TextFont {
-                                font: ui.clone(),
+                                font: ui_font.clone(),
                                 font_size: 19.0,
                                 ..default()
                             },

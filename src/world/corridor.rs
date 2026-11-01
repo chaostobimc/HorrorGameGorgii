@@ -253,7 +253,7 @@ fn elevator(
     commands: &mut Commands,
     b: &mut BuildCtx,
     pal: &Palette,
-    meshes: &mut Assets<Mesh>,
+    _meshes: &mut Assets<Mesh>,
     assets: &GameAssets,
 ) {
     // west wall of the corridor with the shaft opening

@@ -71,7 +71,7 @@ fn spawn_weather(
     assets: Res<GameAssets>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut mats: ResMut<Assets<StandardMaterial>>,
-    mut existing: Query<&RainField>,
+    existing: Query<&RainField>,
     mut rng: ResMut<Rng>,
 ) {
     if existing.iter().next().is_some() {

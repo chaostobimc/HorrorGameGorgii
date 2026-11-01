@@ -12,7 +12,7 @@ use bevy::window::CursorGrabMode;
 
 use crate::audio::{Listener, PlaySfx};
 use crate::collision::{
-    ceiling_height, collect, is_free, resolve_axis, support_height, SolidBox, STEP_UP,
+    ceiling_height, collect, is_free, resolve_axis, support_height, SolidBox,
 };
 use crate::core::{AppState, GameAssets, Rng, Settings, UiState};
 
@@ -266,7 +266,8 @@ fn movement(
     let target_speed = if walking { 1.15 } else { 2.35 };
     let target = Vec2::new(wish.x, wish.z) * target_speed;
     let accel = if player.on_ground { 14.0 } else { 4.0 };
-    player.vel_xz += (target - player.vel_xz) * (accel * dt).min(1.0);
+    let vx = player.vel_xz;
+    player.vel_xz = vx + (target - vx) * (accel * dt).min(1.0);
 
     // Horizontal movement, resolved one axis at a time.
     let dx = player.vel_xz.x * dt;
@@ -358,7 +359,7 @@ enum Surface {
 fn head_bob(
     settings: Res<Settings>,
     time: Res<Time>,
-    mut q_player: Query<&mut Player>,
+    q_player: Query<&Player>,
     mut q_cam: Query<&mut Transform, (With<PlayerCamera>, Without<Player>)>,
 ) {
     let Ok(player) = q_player.get_single() else {

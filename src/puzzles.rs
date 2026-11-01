@@ -1,8 +1,9 @@
 //! Interaction logic: the safe, the breaker panel, the clock and the elevator.
 
+use bevy::audio::{PlaybackMode, Volume};
 use bevy::prelude::*;
 
-use crate::audio::{AmbCategory, Ambience, AmbienceBeds, DelayedSfx, PlaySfx};
+use crate::audio::{AmbCategory, Ambience, DelayedSfx, PlaySfx};
 use crate::core::{AppState, GameAssets, Overlay, UiState};
 use crate::interact::{Action, Interactable, Interacted};
 use crate::palette::Palette;
