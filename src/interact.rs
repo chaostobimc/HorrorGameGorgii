@@ -25,6 +25,8 @@ pub enum Action {
     EmergencySwitch,
     Gate,
     Flavor(u8),
+    /// Something placed with the level editor. `custom.rs` gives it behaviour.
+    Custom(u32),
 }
 
 #[derive(Component, Clone)]

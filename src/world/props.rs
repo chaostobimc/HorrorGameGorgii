@@ -3,12 +3,29 @@
 //! Each prop is a small composite of primitives with its own merged mesh, so
 //! the hotel still draws in a few dozen calls while looking hand built.
 
+use std::cell::Cell;
+
 use bevy::prelude::*;
 
 use crate::geom::MeshBuilder;
 use crate::palette::Palette;
 
 use super::{Flicker, Sway};
+
+thread_local! {
+    /// While the level editor or the level file spawns a prop, every entity it
+    /// creates is parented to this root, so the prop can be moved, rotated and
+    /// deleted as one object. `None` while the hand built hotel is generated.
+    static SPAWN_PARENT: Cell<Option<Entity>> = Cell::new(None);
+}
+
+/// Runs `f` with all props spawned inside it attached to `parent`.
+pub fn with_parent<R>(parent: Option<Entity>, f: impl FnOnce() -> R) -> R {
+    let previous = SPAWN_PARENT.with(|slot| slot.replace(parent));
+    let out = f();
+    SPAWN_PARENT.with(|slot| slot.set(previous));
+    out
+}
 
 pub(crate) fn mesh_of<F: FnOnce(&mut MeshBuilder)>(meshes: &mut Assets<Mesh>, f: F) -> Handle<Mesh> {
     let mut mb = MeshBuilder::new();
@@ -22,14 +39,34 @@ pub(crate) fn spawn_prop(
     mat: Handle<StandardMaterial>,
     transform: Transform,
 ) -> Entity {
-    commands
-        .spawn((
-            Mesh3d(mesh),
-            MeshMaterial3d(mat),
-            transform,
-            Visibility::default(),
-        ))
-        .id()
+    match SPAWN_PARENT.with(|slot| slot.get()) {
+        Some(parent) => {
+            let mesh = mesh.clone();
+            let mat = mat.clone();
+            let mut spawned: Option<Entity> = None;
+            commands.entity(parent).with_children(|child| {
+                spawned = Some(
+                    child
+                        .spawn((
+                            Mesh3d(mesh),
+                            MeshMaterial3d(mat),
+                            transform,
+                            Visibility::default(),
+                        ))
+                        .id(),
+                );
+            });
+            spawned.unwrap()
+        }
+        None => commands
+            .spawn((
+                Mesh3d(mesh),
+                MeshMaterial3d(mat),
+                transform,
+                Visibility::default(),
+            ))
+            .id(),
+    }
 }
 
 /// Text that lives in the world (door numbers, signs, the clock readout).
@@ -686,10 +723,12 @@ pub fn door(
     let frame = mesh_of(meshes, |mb| {
         let t = 0.10;
         let rot = Quat::from_rotation_y(yaw);
+        // `hinge` is the left jamb: the frame sits from there to the right, so
+        // it lines up with the leaf instead of hanging half a door beside it.
         let off = |v: Vec3| hinge + rot * v;
-        mb.box_all(off(Vec3::new(-width * 0.5 - t * 0.5, height * 0.5, 0.0)), Vec3::new(t, height + t, 0.30), 1.0);
-        mb.box_all(off(Vec3::new(width * 0.5 + t * 0.5, height * 0.5, 0.0)), Vec3::new(t, height + t, 0.30), 1.0);
-        mb.box_all(off(Vec3::new(0.0, height + t * 0.5, 0.0)), Vec3::new(width + t * 2.0, t, 0.30), 1.0);
+        mb.box_all(off(Vec3::new(-t * 0.5, height * 0.5, 0.0)), Vec3::new(t, height + t, 0.30), 1.0);
+        mb.box_all(off(Vec3::new(width + t * 0.5, height * 0.5, 0.0)), Vec3::new(t, height + t, 0.30), 1.0);
+        mb.box_all(off(Vec3::new(width * 0.5, height + t * 0.5, 0.0)), Vec3::new(width + t * 2.0, t, 0.30), 1.0);
     });
     spawn_prop(
         commands,

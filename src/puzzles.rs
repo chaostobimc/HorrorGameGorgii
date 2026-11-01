@@ -231,7 +231,8 @@ und irgendwo im Werk klickt es bei jeder Bewegung.",
                     );
                 }
             }
-            Action::EmergencySwitch | Action::Gate => {}
+            // editor placed objects handle themselves in `custom.rs`
+            Action::EmergencySwitch | Action::Gate | Action::Custom(_) => {}
         }
     }
 }

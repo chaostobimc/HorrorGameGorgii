@@ -437,6 +437,9 @@ fn build_level(
     detail::dress(&mut commands, &mut b, &palette, &mut meshes);
     b.finish(&mut commands, &mut meshes, "architecture");
 
+    // whatever was placed in the level editor goes in on top of the hotel
+    crate::custom::spawn_level_objects(&mut commands, &mut meshes, &palette, &assets);
+
     built.0 = true;
 }
 

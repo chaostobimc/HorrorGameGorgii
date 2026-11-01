@@ -4,9 +4,25 @@ version = "1.0.0"
 edition = "2021"
 description = "The Diplomat Peak - Das letzte Kapitel. First-person psychological horror in an abandoned mountain resort."
 authors = ["Gorgii"]
+# `cargo run --release` keeps starting the game; the editor needs --bin editor
+default-run = "diplomat_peak"
 
 [dependencies]
 bevy = { version = "0.15.3", features = ["wav"] }
+
+# The game and the level editor share one library: the editor builds the real
+# hotel and places the real props, so what it writes is what the game loads.
+[lib]
+name = "diplomat_peak"
+path = "src/lib.rs"
+
+[[bin]]
+name = "diplomat_peak"
+path = "src/main.rs"
+
+[[bin]]
+name = "editor"
+path = "src/bin/editor.rs"
 
 # Bevy is heavy to compile in debug: keep our own code quick to rebuild but
 # always optimise dependencies.
