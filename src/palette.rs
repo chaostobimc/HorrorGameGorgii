@@ -54,6 +54,12 @@ pub struct Palette {
     pub glass: Handle<StandardMaterial>,
     pub rain_glass: Handle<StandardMaterial>,
     pub black: Handle<StandardMaterial>,
+    // the player's own body (first person view model)
+    pub skin: Handle<StandardMaterial>,
+    pub skin_dark: Handle<StandardMaterial>,
+    pub trouser: Handle<StandardMaterial>,
+    pub shirt: Handle<StandardMaterial>,
+    pub sleeve: Handle<StandardMaterial>,
 }
 
 impl Palette {
@@ -322,6 +328,34 @@ impl Palette {
             ..default()
         });
 
+        // ---- first person body -------------------------------------------------
+        // flat colours, no textures: a view model never wants tiling noise
+        let skin = add(StandardMaterial {
+            base_color: Color::srgb(0.60, 0.45, 0.35),
+            perceptual_roughness: 0.62,
+            ..default()
+        });
+        let skin_dark = add(StandardMaterial {
+            base_color: Color::srgb(0.44, 0.32, 0.25),
+            perceptual_roughness: 0.70,
+            ..default()
+        });
+        let trouser = add(StandardMaterial {
+            base_color: Color::srgb(0.17, 0.19, 0.22),
+            perceptual_roughness: 0.88,
+            ..default()
+        });
+        let shirt = add(StandardMaterial {
+            base_color: Color::srgb(0.21, 0.23, 0.20),
+            perceptual_roughness: 0.90,
+            ..default()
+        });
+        let sleeve = add(StandardMaterial {
+            base_color: Color::srgb(0.18, 0.20, 0.18),
+            perceptual_roughness: 0.92,
+            ..default()
+        });
+
         Self {
             marble,
             wood_floor,
@@ -365,6 +399,11 @@ impl Palette {
             glass,
             rain_glass,
             black,
+            skin,
+            skin_dark,
+            trouser,
+            shirt,
+            sleeve,
         }
     }
 }

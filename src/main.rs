@@ -10,6 +10,7 @@
 #![allow(dead_code)]
 
 mod audio;
+mod body;
 mod collision;
 mod core;
 mod finale;
@@ -28,6 +29,7 @@ use bevy::prelude::*;
 use bevy::window::WindowResolution;
 
 use crate::audio::AudioPlugin;
+use crate::body::BodyPlugin;
 use crate::core::{AppState, CorePlugin};
 use crate::finale::FinalePlugin;
 use crate::fx::FxPlugin;
@@ -58,6 +60,7 @@ fn main() {
         .add_plugins((
             CorePlugin,
             AudioPlugin,
+            BodyPlugin,
             PlayerPlugin,
             InteractPlugin,
             UiPlugin,

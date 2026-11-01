@@ -1,5 +1,6 @@
 //! Interface: HUD, documents, keypad, menus and the screen grade.
 
+pub mod debug;
 pub mod documents;
 pub mod hud;
 pub mod keypad;
@@ -68,7 +69,11 @@ impl Plugin for UiPlugin {
             .add_event::<keypad::SafeOpened>()
             .add_systems(
                 OnEnter(AppState::Playing),
-                (hud::spawn_hud, spawn_grade_layer),
+                (hud::spawn_hud, spawn_grade_layer, debug::spawn_debug_hud),
+            )
+            .add_systems(
+                Update,
+                debug::update_debug.run_if(in_state(AppState::Playing)),
             )
             .add_systems(Update, tick_fade)
             .add_systems(

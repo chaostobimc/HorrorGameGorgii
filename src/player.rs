@@ -8,13 +8,15 @@ use bevy::input::mouse::MouseMotion;
 use bevy::pbr::{DistanceFog, FogFalloff, VolumetricFog, VolumetricLight};
 use bevy::prelude::*;
 use bevy::render::camera::Exposure;
-use bevy::window::CursorGrabMode;
+use bevy::window::{CursorGrabMode, CursorMoved};
 
 use crate::audio::{Listener, PlaySfx};
 use crate::collision::{
     ceiling_height, collect, is_free, resolve_axis, support_height, SolidBox,
 };
-use crate::core::{AppState, GameAssets, Rng, Settings, UiState};
+use crate::body::spawn_fp_body;
+use crate::core::{AppState, GameAssets, Overlay, Rng, Settings, UiState};
+use crate::palette::Palette;
 
 pub const EYE_HEIGHT: f32 = 1.66;
 pub const RADIUS: f32 = 0.33;
@@ -93,7 +95,12 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-fn spawn_player(mut commands: Commands, settings: Res<Settings>) {
+fn spawn_player(
+    mut commands: Commands,
+    settings: Res<Settings>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    pal: Res<Palette>,
+) {
     let fov = settings.fov.to_radians();
     commands
         .spawn((
@@ -124,7 +131,7 @@ fn spawn_player(mut commands: Commands, settings: Res<Settings>) {
                     Exposure { ev100: 6.2 },
                     Tonemapping::TonyMcMapface,
                     Bloom {
-                        intensity: 0.10,
+                        intensity: 0.16,
                         low_frequency_boost: 0.4,
                         ..Bloom::NATURAL
                     },
@@ -149,11 +156,13 @@ fn spawn_player(mut commands: Commands, settings: Res<Settings>) {
                     cam.spawn((
                         SpotLight {
                             color: Color::srgb(1.0, 0.92, 0.78),
-                            intensity: 26_000.0,
-                            range: 26.0,
+                            intensity: 31_000.0,
+                            range: 28.0,
                             radius: 0.02,
                             inner_angle: 0.10,
-                            outer_angle: 0.44,
+                            // a real torch cone. Wider than this and the light
+                            // would blow out the hands that hold it.
+                            outer_angle: 0.27,
                             shadows_enabled: true,
                             shadow_depth_bias: 0.03,
                             ..default()
@@ -161,11 +170,14 @@ fn spawn_player(mut commands: Commands, settings: Res<Settings>) {
                         VolumetricLight,
                         Transform::from_xyz(0.14, -0.10, 0.0),
                         Flashlight {
-                            base_intensity: 26_000.0,
+                            base_intensity: 31_000.0,
                             flicker_timer: 4.0,
                         },
                         Name::new("Flashlight"),
                     ));
+
+                    // the visible body: torso, legs and the two arms
+                    spawn_fp_body(cam, &mut meshes, &pal);
                 });
         });
 }
@@ -177,24 +189,43 @@ fn despawn_player(mut commands: Commands, q: Query<Entity, With<Player>>) {
 }
 
 /// Locks the mouse while we are actually in control.
-fn cursor_grab(ui: Res<UiState>, state: Res<State<AppState>>, mut windows: Query<&mut Window>) {
+///
+/// The grab is re-requested on every click: on Windows a grab that was
+/// requested while the window was still settling is silently refused, and
+/// re-applying the cursor options is what actually catches the mouse.
+fn cursor_grab(
+    ui: Res<UiState>,
+    state: Res<State<AppState>>,
+    buttons: Res<ButtonInput<MouseButton>>,
+    mut windows: Query<&mut Window>,
+    mut held: Local<bool>,
+) {
     let playing = *state.get() == AppState::Playing;
     let want = playing && ui.can_play();
-    if let Ok(mut window) = windows.get_single_mut() {
-        let (grab, visible) = if want {
-            (CursorGrabMode::Locked, false)
-        } else {
-            (CursorGrabMode::None, true)
-        };
-        if window.cursor_options.grab_mode != grab {
-            window.cursor_options.grab_mode = grab;
-        }
-        window.cursor_options.visible = visible;
+    let Ok(mut window) = windows.get_single_mut() else {
+        return;
+    };
+
+    if want && !*held {
+        *held = true;
+        // hide first, then lock: some window managers refuse to lock a cursor
+        // that is still visible
+        window.cursor_options.visible = false;
+        window.cursor_options.grab_mode = CursorGrabMode::Locked;
+    } else if !want && *held {
+        *held = false;
+        window.cursor_options.grab_mode = CursorGrabMode::None;
+        window.cursor_options.visible = true;
+    } else if want && buttons.just_pressed(MouseButton::Left) {
+        window.cursor_options.visible = false;
+        window.cursor_options.grab_mode = CursorGrabMode::Locked;
     }
 }
 
 fn mouse_look(
     mut mouse: EventReader<MouseMotion>,
+    mut cursor: EventReader<CursorMoved>,
+    mut last_cursor: Local<Option<Vec2>>,
     settings: Res<Settings>,
     ui: Res<UiState>,
     mut q: Query<&mut Player>,
@@ -203,10 +234,31 @@ fn mouse_look(
     for ev in mouse.read() {
         delta += ev.delta;
     }
+
+    // Fallback path. If the operating system refuses the cursor grab no
+    // relative motion arrives at all, so the delta is derived from the
+    // absolute cursor position instead. When the grab works the follow-up
+    // events simply never appear and this stays silent.
+    let mut abs = Vec2::ZERO;
+    let mut had_abs = false;
+    for ev in cursor.read() {
+        if let Some(prev) = *last_cursor {
+            abs += ev.position - prev;
+            had_abs = true;
+        }
+        *last_cursor = Some(ev.position);
+    }
+    if delta == Vec2::ZERO && had_abs {
+        // clamped: a warp of the hidden cursor must not snap the view around
+        delta = abs.clamp(Vec2::splat(-180.0), Vec2::splat(180.0));
+    }
     if delta == Vec2::ZERO {
         return;
     }
-    if !ui.can_play() {
+    // Only a modal page may stop the view from turning. The cinematic `locked`
+    // flag is not allowed to freeze the camera: a stuck flag would make the
+    // game unplayable.
+    if ui.overlay != Overlay::None {
         return;
     }
     if let Ok(mut player) = q.get_single_mut() {
@@ -404,7 +456,7 @@ fn flashlight_toggle(
         } else {
             Visibility::Hidden
         };
-        light.intensity = if player.flashlight { 26_000.0 } else { 0.0 };
+        light.intensity = if player.flashlight { 31_000.0 } else { 0.0 };
     }
     sfx.send(PlaySfx::flat(assets.snd.switch_click.clone(), 0.35));
 }

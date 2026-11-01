@@ -209,7 +209,22 @@ impl Plugin for StoryPlugin {
     }
 }
 
-fn reset_story(mut progress: ResMut<Progress>, mut sub: ResMut<Subtitle>, time: Res<Time>) {
+fn reset_story(
+    mut progress: ResMut<Progress>,
+    mut sub: ResMut<Subtitle>,
+    time: Res<Time>,
+    mut ui: ResMut<crate::core::UiState>,
+    mut virt: ResMut<Time<bevy::time::Virtual>>,
+) {
+    // Entering play always starts from a clean input state: no modal page, no
+    // cinematic lock and a running clock. A stale flag here would silently
+    // kill mouse look and movement.
+    ui.overlay = crate::core::Overlay::None;
+    ui.locked = false;
+    ui.open_doc = 0;
+    if virt.is_paused() {
+        virt.unpause();
+    }
     *progress = Progress::default();
     progress.started = time.elapsed_secs();
     sub.say(

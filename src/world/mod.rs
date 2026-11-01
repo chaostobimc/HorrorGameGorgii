@@ -13,6 +13,7 @@
 //! Everything is axis aligned so the collision solver stays exact.
 
 pub mod corridor;
+pub mod detail;
 pub mod foyer;
 pub mod penthouse;
 pub mod props;
@@ -425,13 +426,15 @@ fn build_level(
     if built.0 {
         return;
     }
-    ambient.color = Color::srgb(0.42, 0.50, 0.62);
-    ambient.brightness = 26.0;
+    // a little more fill than before: the rooms were drowning in black
+    ambient.color = Color::srgb(0.46, 0.51, 0.60);
+    ambient.brightness = 42.0;
 
     let mut b = BuildCtx::new();
     foyer::build(&mut commands, &mut b, &palette, &mut meshes, &assets, &mut rng);
     corridor::build(&mut commands, &mut b, &palette, &mut meshes, &assets, &mut rng);
     penthouse::build(&mut commands, &mut b, &palette, &mut meshes, &assets, &mut rng);
+    detail::dress(&mut commands, &mut b, &palette, &mut meshes);
     b.finish(&mut commands, &mut meshes, "architecture");
 
     built.0 = true;
