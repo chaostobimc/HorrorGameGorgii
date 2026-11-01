@@ -297,11 +297,23 @@ pub struct MenuLabel;
 
 pub fn title_buttons(
     mut interactions: Query<(&Interaction, &MenuButton, &mut BackgroundColor), Changed<Interaction>>,
+    keys: Res<ButtonInput<KeyCode>>,
     mut next: ResMut<NextState<AppState>>,
     mut ui: ResMut<UiState>,
     mut fade: ResMut<Fade>,
     mut exit: EventWriter<AppExit>,
 ) {
+    // Escape hatch: the game must start even if mouse picking on this machine
+    // never delivers a click to the buttons.
+    if keys.just_pressed(KeyCode::Enter)
+        || keys.just_pressed(KeyCode::NumpadEnter)
+        || keys.just_pressed(KeyCode::Space)
+    {
+        ui.overlay = Overlay::None;
+        fade.to_black(1.1);
+        next.set(AppState::Playing);
+        return;
+    }
     for (interaction, button, mut bg) in interactions.iter_mut() {
         bg.0 = match *interaction {
             Interaction::Hovered => Color::srgba(0.86, 0.74, 0.48, 0.07),
