@@ -27,6 +27,7 @@ pub enum Overlay {
     Keypad,
     Pause,
     Settings,
+    Controls,
 }
 
 #[derive(Resource)]
@@ -65,6 +66,81 @@ pub struct Settings {
     pub volumetric: bool,
     pub shadows: bool,
     pub invert_y: bool,
+}
+
+/// Where the settings menu stores its state. Relative to the working
+/// directory, which is the project folder when started with `cargo run`.
+pub const SETTINGS_PATH: &str = "settings.cfg";
+
+impl Settings {
+    /// Reads the last used settings, falling back to the defaults for every
+    /// value that is missing or unreadable.
+    pub fn load() -> Self {
+        let mut s = Settings::default();
+        let Ok(text) = std::fs::read_to_string(SETTINGS_PATH) else {
+            return s;
+        };
+        for line in text.lines() {
+            let Some((key, value)) = line.split_once('=') else {
+                continue;
+            };
+            let value = value.trim();
+            match key.trim() {
+                "sensitivity" => {
+                    if let Ok(x) = value.parse() {
+                        s.sensitivity = x.clamp(0.0002, 0.01);
+                    }
+                }
+                "volume_master" => {
+                    if let Ok(x) = value.parse() {
+                        s.volume_master = x.clamp(0.0, 1.0);
+                    }
+                }
+                "volume_ambience" => {
+                    if let Ok(x) = value.parse() {
+                        s.volume_ambience = x.clamp(0.0, 1.0);
+                    }
+                }
+                "fov" => {
+                    if let Ok(x) = value.parse() {
+                        s.fov = x.clamp(50.0, 110.0);
+                    }
+                }
+                "head_bob" => {
+                    if let Ok(x) = value.parse() {
+                        s.head_bob = x.clamp(0.0, 2.0);
+                    }
+                }
+                "grain" => {
+                    if let Ok(x) = value.parse() {
+                        s.grain = x.clamp(0.0, 1.0);
+                    }
+                }
+                "volumetric" => s.volumetric = value != "0",
+                "shadows" => s.shadows = value != "0",
+                "invert_y" => s.invert_y = value != "0",
+                _ => {}
+            }
+        }
+        s
+    }
+
+    pub fn save(&self) {
+        let text = format!(
+            "sensitivity={}\nvolume_master={}\nvolume_ambience={}\nfov={}\nhead_bob={}\n\
+             grain={}\nvolumetric={}\nshadows={}\ninvert_y={}\n",
+            self.sensitivity,
+            self.volume_master,
+            self.volume_ambience,
+            self.fov,
+            self.head_bob,
+            self.grain,
+            self.volumetric as u8,
+            self.shadows as u8,
+            self.invert_y as u8,
+        );
+        let _ = std::fs::write(SETTINGS_PATH, text);
+    }
 }
 
 impl Default for Settings {
@@ -264,7 +340,7 @@ pub struct CorePlugin;
 
 impl Plugin for CorePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Settings>()
+        app.insert_resource(Settings::load())
             .init_resource::<UiState>()
             .init_resource::<Rng>()
             .add_systems(PreStartup, load_assets.in_set(LoadAssetsSet))

@@ -122,14 +122,24 @@ impl Plugin for UiPlugin {
                     .chain()
                     .after(crate::core::LoadAssetsSet),
             )
-            .add_systems(OnEnter(AppState::Title), menus::spawn_menu_camera)
+            // In `Title` the menu is drawn on its own 3D camera inside the
+            // lobby, so the 2D menu camera must go away - otherwise it would
+            // claim the UI pass and the 3D camera would paint over the menu.
+            .add_systems(OnEnter(AppState::Title), menus::despawn_menu_camera)
             .add_systems(OnEnter(AppState::Ending), menus::spawn_menu_camera)
             .add_systems(OnEnter(AppState::Playing), menus::despawn_menu_camera)
             .add_systems(OnEnter(AppState::Ending), menus::spawn_ending)
             .add_systems(
                 Update,
-                menus::title_buttons.run_if(in_state(AppState::Title)),
+                (
+                    menus::title_buttons,
+                    menus::title_overlay,
+                    menus::title_camera_drift,
+                )
+                    .chain()
+                    .run_if(in_state(AppState::Title)),
             )
+            .add_systems(Update, menus::save_settings)
             .add_systems(
                 Update,
                 menus::ending_tick.run_if(in_state(AppState::Ending)),

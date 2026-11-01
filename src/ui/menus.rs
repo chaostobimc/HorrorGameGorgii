@@ -1,9 +1,9 @@
 //! Loading screen, title screen, pause menu, settings and the end card.
 
 use bevy::app::AppExit;
-use bevy::pbr::VolumetricFog;
+use bevy::pbr::{DistanceFog, FogFalloff, VolumetricFog};
 use bevy::prelude::*;
-use bevy::time::Virtual;
+use bevy::time::{Real, Virtual};
 
 use crate::audio::PlaySfx;
 use crate::core::{AppState, GameAssets, Overlay, Settings, UiState};
@@ -21,6 +21,9 @@ pub struct LoadingRoot;
 pub struct LoadingBar;
 #[derive(Component)]
 pub struct PauseRoot;
+/// The settings / controls page on the title screen.
+#[derive(Component)]
+pub struct MenuPanel;
 #[derive(Component)]
 pub struct EndRoot;
 #[derive(Component)]
@@ -32,6 +35,7 @@ pub struct SettingsStep(pub usize, pub f32);
 pub enum MenuAction {
     StartGame,
     OpenSettings,
+    OpenControls,
     CloseSettings,
     Resume,
     BackToTitle,
@@ -177,10 +181,20 @@ pub fn spawn_title(
         bevy::render::camera::Exposure { ev100: 6.0 },
         bevy::core_pipeline::tonemapping::Tonemapping::TonyMcMapface,
         bevy::core_pipeline::bloom::Bloom {
-            intensity: 0.12,
+            intensity: 0.14,
             ..bevy::core_pipeline::bloom::Bloom::NATURAL
         },
+        DistanceFog {
+            color: Color::srgba(0.045, 0.058, 0.072, 1.0),
+            falloff: FogFalloff::Exponential { density: 0.019 },
+            ..default()
+        },
         Transform::from_xyz(-8.5, 1.75, 7.0).looking_at(Vec3::new(2.0, 2.4, -6.0), Vec3::Y),
+        Msaa::Sample4,
+        // This is the only camera in `Title`, so the menu UI is drawn into its
+        // pass. Without the marker a second camera could steal the UI and the
+        // menu would never be visible.
+        IsDefaultUiCamera,
         TitleCamera,
     ));
 
@@ -305,9 +319,10 @@ pub fn title_buttons(
 ) {
     // Escape hatch: the game must start even if mouse picking on this machine
     // never delivers a click to the buttons.
-    if keys.just_pressed(KeyCode::Enter)
-        || keys.just_pressed(KeyCode::NumpadEnter)
-        || keys.just_pressed(KeyCode::Space)
+    if ui.overlay == Overlay::None
+        && (keys.just_pressed(KeyCode::Enter)
+            || keys.just_pressed(KeyCode::NumpadEnter)
+            || keys.just_pressed(KeyCode::Space))
     {
         ui.overlay = Overlay::None;
         fade.to_black(1.1);
@@ -458,12 +473,15 @@ pub fn pause_menu(
             ui.overlay = Overlay::Pause;
         } else if ui.overlay == Overlay::Pause {
             ui.overlay = Overlay::None;
-        } else if ui.overlay == Overlay::Settings {
+        } else if ui.overlay == Overlay::Settings || ui.overlay == Overlay::Controls {
             ui.overlay = Overlay::Pause;
         }
     }
 
-    let paused = ui.overlay == Overlay::Pause || ui.overlay == Overlay::Settings;
+    let paused = matches!(
+        ui.overlay,
+        Overlay::Pause | Overlay::Settings | Overlay::Controls
+    );
     if paused && !time.is_paused() {
         time.pause();
     } else if !paused && time.is_paused() {
@@ -472,13 +490,12 @@ pub fn pause_menu(
 
     // rebuild panel when the desired page changes
     let have = existing.iter().next().is_some();
-    let want_settings = ui.overlay == Overlay::Settings;
-    if *last_page != ui.overlay || (paused && !have) {
+    if *last_page != ui.overlay || (paused && (!have || settings.is_changed())) {
         for e in existing.iter() {
             commands.entity(e).despawn_recursive();
         }
         if paused {
-            spawn_pause(&mut commands, &assets, &settings, want_settings);
+            spawn_pause(&mut commands, &assets, &settings, ui.overlay);
         }
         *last_page = if paused { ui.overlay } else { Overlay::None };
     }
@@ -490,6 +507,7 @@ pub fn pause_menu(
         match button.0 {
             MenuAction::Resume => ui.overlay = Overlay::None,
             MenuAction::OpenSettings => ui.overlay = Overlay::Settings,
+            MenuAction::OpenControls => ui.overlay = Overlay::Controls,
             MenuAction::CloseSettings => ui.overlay = Overlay::Pause,
             MenuAction::Quit => {
                 exit.send(AppExit::Success);
@@ -505,15 +523,221 @@ pub fn pause_menu(
     let _ = &mut settings;
 }
 
+// ---------------------------------------------------------------------------
+// shared panel pieces
+// ---------------------------------------------------------------------------
+
+fn divider(parent: &mut ChildBuilder) {
+    parent.spawn((
+        Node {
+            height: Val::Px(1.0),
+            width: Val::Percent(100.0),
+            margin: UiRect::vertical(Val::Px(12.0)),
+            ..default()
+        },
+        BackgroundColor(Color::srgba(0.75, 0.70, 0.58, 0.16)),
+    ));
+}
+
+fn panel_frame() -> (Node, BackgroundColor, BorderColor) {
+    (
+        Node {
+            width: Val::Px(560.0),
+            padding: UiRect::all(Val::Px(40.0)),
+            flex_direction: FlexDirection::Column,
+            row_gap: Val::Px(4.0),
+            border: UiRect::all(Val::Px(1.0)),
+            ..default()
+        },
+        BackgroundColor(COL_PANEL),
+        BorderColor(Color::srgba(0.75, 0.70, 0.58, 0.20)),
+    )
+}
+
+fn heading(parent: &mut ChildBuilder, font: &Handle<Font>, text: &str) {
+    parent.spawn((
+        Text::new(text),
+        TextFont {
+            font: font.clone(),
+            font_size: 38.0,
+            ..default()
+        },
+        TextColor(COL_GOLD),
+    ));
+}
+
+fn on_off(value: bool) -> String {
+    if value {
+        "AN".into()
+    } else {
+        "AUS".into()
+    }
+}
+
+fn settings_rows(
+    parent: &mut ChildBuilder,
+    ui: &Handle<Font>,
+    ui_light: &Handle<Font>,
+    settings: &Settings,
+) {
+    let rows: [(&str, String, usize); 8] = [
+        (
+            "Maus-Empfindlichkeit",
+            format!("{:.1}", settings.sensitivity * 1000.0),
+            0,
+        ),
+        (
+            "Lautstärke",
+            format!("{}%", (settings.volume_master * 100.0) as i32),
+            1,
+        ),
+        ("Blickfeld", format!("{}°", settings.fov as i32), 2),
+        ("Filmkorn", format!("{}%", (settings.grain * 100.0) as i32), 3),
+        (
+            "Kopf-Wanken",
+            format!("{}%", (settings.head_bob * 100.0) as i32),
+            4,
+        ),
+        ("Volumetrischer Nebel", on_off(settings.volumetric), 5),
+        ("Schatten", on_off(settings.shadows), 6),
+        ("Maus Y invertieren", on_off(settings.invert_y), 7),
+    ];
+
+    for (label, value, index) in rows {
+        parent
+            .spawn(Node {
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                column_gap: Val::Px(10.0),
+                width: Val::Percent(100.0),
+                height: Val::Px(40.0),
+                ..default()
+            })
+            .with_children(|row| {
+                row.spawn((
+                    Text::new(label),
+                    TextFont {
+                        font: ui_light.clone(),
+                        font_size: 19.0,
+                        ..default()
+                    },
+                    TextColor(COL_BRIGHT),
+                    Node {
+                        width: Val::Px(268.0),
+                        ..default()
+                    },
+                ));
+                for (sym, dir) in [("‹", -1.0_f32), ("›", 1.0_f32)] {
+                    row.spawn((
+                        Button,
+                        Node {
+                            width: Val::Px(34.0),
+                            height: Val::Px(30.0),
+                            align_items: AlignItems::Center,
+                            justify_content: JustifyContent::Center,
+                            border: UiRect::all(Val::Px(1.0)),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgba(0.12, 0.13, 0.14, 0.9)),
+                        BorderColor(Color::srgba(0.5, 0.47, 0.40, 0.3)),
+                        SettingsStep(index, dir),
+                    ))
+                    .with_children(|b| {
+                        b.spawn((
+                            Text::new(sym),
+                            TextFont {
+                                font: ui.clone(),
+                                font_size: 18.0,
+                                ..default()
+                            },
+                            TextColor(COL_DIM),
+                        ));
+                    });
+                }
+                row.spawn((
+                    Text::new(value),
+                    TextFont {
+                        font: ui.clone(),
+                        font_size: 17.0,
+                        ..default()
+                    },
+                    TextColor(COL_GOLD),
+                    Node {
+                        margin: UiRect::left(Val::Px(8.0)),
+                        ..default()
+                    },
+                ));
+            });
+    }
+}
+
+fn controls_rows(parent: &mut ChildBuilder, ui: &Handle<Font>, ui_light: &Handle<Font>) {
+    let rows: [(&str, &str); 8] = [
+        ("Bewegen", "W A S D"),
+        ("Umschauen", "Maus"),
+        ("Interagieren", "E"),
+        ("Stirnlampe", "F"),
+        ("Notizbuch", "Tab"),
+        ("Pause", "Esc"),
+        ("Rennen", "Shift"),
+        ("Diagnose", "F3"),
+    ];
+
+    for (label, keys) in rows {
+        parent
+            .spawn(Node {
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::SpaceBetween,
+                width: Val::Percent(100.0),
+                height: Val::Px(36.0),
+                ..default()
+            })
+            .with_children(|row| {
+                row.spawn((
+                    Text::new(label),
+                    TextFont {
+                        font: ui_light.clone(),
+                        font_size: 19.0,
+                        ..default()
+                    },
+                    TextColor(COL_BRIGHT),
+                ));
+                row.spawn((
+                    Text::new(keys),
+                    TextFont {
+                        font: ui.clone(),
+                        font_size: 18.0,
+                        ..default()
+                    },
+                    TextColor(COL_GOLD),
+                ));
+            });
+    }
+}
+
+// ---------------------------------------------------------------------------
+// pause menu
+// ---------------------------------------------------------------------------
+
 fn spawn_pause(
     commands: &mut Commands,
     assets: &GameAssets,
     settings: &Settings,
-    show_settings: bool,
+    page: Overlay,
 ) {
     let ui = assets.fonts.ui.clone();
     let ui_light = assets.fonts.ui_light.clone();
     let title = assets.fonts.title.clone();
+    let show_settings = page == Overlay::Settings;
+    let show_controls = page == Overlay::Controls;
+    let caption = if show_settings {
+        "Einstellungen"
+    } else if show_controls {
+        "Steuerung"
+    } else {
+        "Pause"
+    };
 
     commands
         .spawn((
@@ -530,126 +754,21 @@ fn spawn_pause(
             PauseRoot,
         ))
         .with_children(|root| {
-            root.spawn((
-                Node {
-                    width: Val::Px(520.0),
-                    padding: UiRect::all(Val::Px(44.0)),
-                    flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(10.0),
-                    border: UiRect::all(Val::Px(1.0)),
-                    ..default()
-                },
-                BackgroundColor(COL_PANEL),
-                BorderColor(Color::srgba(0.75, 0.70, 0.58, 0.20)),
-            ))
-            .with_children(|panel| {
-                panel.spawn((
-                    Text::new(if show_settings { "Einstellungen" } else { "Pause" }),
-                    TextFont {
-                        font: title.clone(),
-                        font_size: 40.0,
-                        ..default()
-                    },
-                    TextColor(COL_GOLD),
-                ));
-                panel.spawn((
-                    Node {
-                        height: Val::Px(1.0),
-                        width: Val::Percent(100.0),
-                        margin: UiRect::vertical(Val::Px(14.0)),
-                        ..default()
-                    },
-                    BackgroundColor(Color::srgba(0.75, 0.70, 0.58, 0.16)),
-                ));
-
+            root.spawn(panel_frame()).with_children(|panel| {
+                heading(panel, &title, caption);
+                divider(panel);
                 if show_settings {
-                    let rows: [(&str, String, usize); 6] = [
-                        ("Maus-Empfindlichkeit", format!("{:.1}", settings.sensitivity * 1000.0), 0),
-                        ("Lautstärke", format!("{}%", (settings.volume_master * 100.0) as i32), 1),
-                        ("Blickfeld", format!("{}°", settings.fov as i32), 2),
-                        ("Filmkorn", format!("{}%", (settings.grain * 100.0) as i32), 3),
-                        ("Volumetrischer Nebel", if settings.volumetric { "AN".into() } else { "AUS".into() }, 4),
-                        ("Schatten", if settings.shadows { "AN".into() } else { "AUS".into() }, 5),
-                    ];
-                    for (label, value, index) in rows {
-                        panel
-                            .spawn(Node {
-                                flex_direction: FlexDirection::Row,
-                                align_items: AlignItems::Center,
-                                column_gap: Val::Px(10.0),
-                                width: Val::Percent(100.0),
-                                height: Val::Px(40.0),
-                                ..default()
-                            })
-                            .with_children(|row| {
-                                row.spawn((
-                                    Text::new(label),
-                                    TextFont {
-                                        font: ui_light.clone(),
-                                        font_size: 19.0,
-                                        ..default()
-                                    },
-                                    TextColor(COL_BRIGHT),
-                                    Node {
-                                        width: Val::Px(280.0),
-                                        ..default()
-                                    },
-                                ));
-                                for (sym, dir) in [("‹", -1.0_f32), ("›", 1.0_f32)] {
-                                    row.spawn((
-                                        Button,
-                                        Node {
-                                            width: Val::Px(34.0),
-                                            height: Val::Px(30.0),
-                                            align_items: AlignItems::Center,
-                                            justify_content: JustifyContent::Center,
-                                            border: UiRect::all(Val::Px(1.0)),
-                                            ..default()
-                                        },
-                                        BackgroundColor(Color::srgba(0.12, 0.13, 0.14, 0.9)),
-                                        BorderColor(Color::srgba(0.5, 0.47, 0.40, 0.3)),
-                                        SettingsStep(index, dir),
-                                    ))
-                                    .with_children(|b| {
-                                        b.spawn((
-                                            Text::new(sym),
-                                            TextFont {
-                                                font: ui.clone(),
-                                                font_size: 18.0,
-                                                ..default()
-                                            },
-                                            TextColor(COL_DIM),
-                                        ));
-                                    });
-                                }
-                                row.spawn((
-                                    Text::new(value),
-                                    TextFont {
-                                        font: ui.clone(),
-                                        font_size: 17.0,
-                                        ..default()
-                                    },
-                                    TextColor(COL_GOLD),
-                                    Node {
-                                        margin: UiRect::left(Val::Px(8.0)),
-                                        ..default()
-                                    },
-                                ));
-                            });
-                    }
-                    panel.spawn((
-                        Node {
-                            height: Val::Px(1.0),
-                            width: Val::Percent(100.0),
-                            margin: UiRect::vertical(Val::Px(12.0)),
-                            ..default()
-                        },
-                        BackgroundColor(Color::srgba(0.75, 0.70, 0.58, 0.16)),
-                    ));
+                    settings_rows(panel, &ui, &ui_light, settings);
+                    divider(panel);
+                    menu_button(panel, &ui, "ZURÜCK", MenuAction::CloseSettings);
+                } else if show_controls {
+                    controls_rows(panel, &ui, &ui_light);
+                    divider(panel);
                     menu_button(panel, &ui, "ZURÜCK", MenuAction::CloseSettings);
                 } else {
                     menu_button(panel, &ui, "FORTSETZEN", MenuAction::Resume);
                     menu_button(panel, &ui, "EINSTELLUNGEN", MenuAction::OpenSettings);
+                    menu_button(panel, &ui, "STEUERUNG", MenuAction::OpenControls);
                     menu_button(panel, &ui, "HAUPTMENÜ", MenuAction::BackToTitle);
                     menu_button(panel, &ui, "SPIEL BEENDEN", MenuAction::Quit);
                 }
@@ -682,6 +801,141 @@ fn menu_button(parent: &mut ChildBuilder, font: &Handle<Font>, label: &str, acti
         });
 }
 
+// ---------------------------------------------------------------------------
+// title screen: settings and controls pages
+// ---------------------------------------------------------------------------
+
+fn spawn_title_page(
+    commands: &mut Commands,
+    assets: &GameAssets,
+    settings: &Settings,
+    page: Overlay,
+) {
+    let ui = assets.fonts.ui.clone();
+    let ui_light = assets.fonts.ui_light.clone();
+    let title = assets.fonts.title.clone();
+    let show_settings = page == Overlay::Settings;
+
+    commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.70)),
+            GlobalZIndex(80),
+            MenuPanel,
+        ))
+        .with_children(|root| {
+            root.spawn(panel_frame()).with_children(|panel| {
+                heading(
+                    panel,
+                    &title,
+                    if show_settings {
+                        "Einstellungen"
+                    } else {
+                        "Steuerung"
+                    },
+                );
+                divider(panel);
+                if show_settings {
+                    settings_rows(panel, &ui, &ui_light, settings);
+                } else {
+                    controls_rows(panel, &ui, &ui_light);
+                }
+                divider(panel);
+                menu_button(panel, &ui, "ZURÜCK", MenuAction::CloseSettings);
+            });
+        });
+}
+
+/// Opens and closes the settings / controls page of the main menu.
+pub fn title_overlay(
+    mut commands: Commands,
+    assets: Res<GameAssets>,
+    settings: Res<Settings>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mut ui: ResMut<UiState>,
+    existing: Query<Entity, With<MenuPanel>>,
+    mut last: Local<Overlay>,
+    mut interactions: Query<(&Interaction, &MenuButton), Changed<Interaction>>,
+) {
+    if keys.just_pressed(KeyCode::Escape) && ui.overlay != Overlay::None {
+        ui.overlay = Overlay::None;
+    }
+
+    let wanted = matches!(ui.overlay, Overlay::Settings | Overlay::Controls);
+    if *last != ui.overlay || (wanted && (existing.iter().next().is_none() || settings.is_changed())) {
+        for e in existing.iter() {
+            commands.entity(e).despawn_recursive();
+        }
+        if wanted {
+            let page = ui.overlay;
+            spawn_title_page(&mut commands, &assets, &settings, page);
+        }
+        *last = ui.overlay;
+    }
+
+    for (interaction, button) in interactions.iter_mut() {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+        match button.0 {
+            MenuAction::OpenSettings => ui.overlay = Overlay::Settings,
+            MenuAction::OpenControls => ui.overlay = Overlay::Controls,
+            MenuAction::CloseSettings => ui.overlay = Overlay::None,
+            _ => {}
+        }
+    }
+}
+
+/// A slow orbit through the dark lobby, so the menu sits inside the hotel.
+pub fn title_camera_drift(time: Res<Time>, mut q: Query<&mut Transform, With<TitleCamera>>) {
+    let t = time.elapsed_secs();
+    let a = t * 0.055;
+    let ahead = a + 0.7;
+    for mut tf in q.iter_mut() {
+        let pos = Vec3::new(
+            a.sin() * 6.2,
+            1.84 + (t * 0.19).sin() * 0.03,
+            a.cos() * 6.2,
+        );
+        let look = Vec3::new(
+            ahead.sin() * 4.4,
+            2.15 + (t * 0.11).sin() * 0.45,
+            ahead.cos() * 4.4,
+        );
+        *tf = Transform::from_translation(pos).looking_at(look, Vec3::Y);
+    }
+}
+
+/// Writes the settings to disk once the player stops clicking, so the menu
+/// choices survive a restart.
+pub fn save_settings(
+    settings: Res<Settings>,
+    time: Res<Time<Real>>,
+    mut dirty: Local<bool>,
+    mut wait: Local<f32>,
+) {
+    if settings.is_changed() {
+        *dirty = true;
+        *wait = 0.0;
+    }
+    if !*dirty {
+        return;
+    }
+    *wait += time.delta_secs();
+    if *wait > 0.5 {
+        settings.save();
+        *dirty = false;
+        *wait = 0.0;
+    }
+}
+
 /// Settings arrows (works both in the pause menu and on the title screen).
 pub fn settings_cursor(
     mut q: Query<(&Interaction, &SettingsStep), Changed<Interaction>>,
@@ -703,8 +957,10 @@ pub fn settings_cursor(
             }
             2 => settings.fov = (settings.fov + 2.0 * d).clamp(60.0, 92.0),
             3 => settings.grain = (settings.grain + 0.1 * d).clamp(0.0, 1.0),
-            4 => settings.volumetric = !settings.volumetric,
-            5 => settings.shadows = !settings.shadows,
+            4 => settings.head_bob = (settings.head_bob + 0.1 * d).clamp(0.0, 1.5),
+            5 => settings.volumetric = !settings.volumetric,
+            6 => settings.shadows = !settings.shadows,
+            7 => settings.invert_y = !settings.invert_y,
             _ => {}
         }
     }
@@ -766,7 +1022,10 @@ pub fn press_sound(
 }
 
 /// Removes the menu camera and UI when play starts.
-pub fn cleanup_title(mut commands: Commands, q: Query<Entity, Or<(With<TitleRoot>, With<TitleCamera>)>>) {
+pub fn cleanup_title(
+    mut commands: Commands,
+    q: Query<Entity, Or<(With<TitleRoot>, With<TitleCamera>, With<MenuPanel>)>>,
+) {
     for e in q.iter() {
         commands.entity(e).despawn_recursive();
     }
