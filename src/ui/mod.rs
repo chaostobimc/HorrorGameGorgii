@@ -69,7 +69,12 @@ impl Plugin for UiPlugin {
             .add_event::<keypad::SafeOpened>()
             .add_systems(
                 OnEnter(AppState::Playing),
-                (hud::spawn_hud, spawn_grade_layer, debug::spawn_debug_hud),
+                (
+                    hud::spawn_hud,
+                    spawn_grade_layer,
+                    debug::spawn_debug_hud,
+                    start_fade_in,
+                ),
             )
             .add_systems(
                 Update,
@@ -145,6 +150,15 @@ impl Plugin for UiPlugin {
                 menus::ending_tick.run_if(in_state(AppState::Ending)),
             );
     }
+}
+
+/// The menu fades to black when a game is started. Entering the hotel has to
+/// fade back out of it, otherwise the black curtain stays on top of the world
+/// for the whole session.
+fn start_fade_in(mut fade: ResMut<Fade>) {
+    fade.alpha = 1.0;
+    fade.target = 0.0;
+    fade.speed = 0.9;
 }
 
 fn spawn_grade_layer(

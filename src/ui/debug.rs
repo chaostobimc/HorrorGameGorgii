@@ -69,10 +69,10 @@ pub fn update_debug(
 
     if keys.just_pressed(KeyCode::F3) {
         *toggle = !*toggle;
-        // a press during the intro window closes it for good as well
+        // a press also closes the intro panel for good
         *shown_for = 100.0;
     }
-    let visible = *toggle || *shown_for < 6.0;
+    let visible = *toggle || *shown_for < 4.0;
 
     let Ok(mut vis) = root.get_single_mut() else {
         return;

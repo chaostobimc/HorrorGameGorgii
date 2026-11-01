@@ -147,6 +147,9 @@ fn spawn_player(
                         ..default()
                     },
                     Msaa::Sample4,
+                    // the in-game HUD is drawn into this camera's pass; naming
+                    // it explicitly keeps the UI off any stray camera
+                    IsDefaultUiCamera,
                     Transform::from_xyz(0.0, EYE_HEIGHT, 0.0),
                     PlayerCamera,
                     Eye,
