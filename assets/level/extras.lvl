@@ -14,3 +14,11 @@
 #
 # Erlaubte kinds: block plank crate barrel chair fallen_chair armchair sofa
 # coffee_table round_table rug plant curtain piano sconce light note keypad door
+#                 model   (3D-Modell, z.B.  file=models/room_example.glb voxel=0.25)
+#
+# Aenderungen an der handgebauten Etage (Nummern vergibt der Aufbau, sie sind in
+# Editor und Spiel identisch):
+#   part  <id> swap models/tuer.glb 1.0      Modell statt des Originalteils
+#   part  <id> hide                          unsichtbar, Verhalten bleibt
+#   group <id> remove                        ganzes Moebel entfernen
+#   group <id> move 0.5 0.0 0.0              verschieben

@@ -13,6 +13,7 @@ use crate::core::GameAssets;
 use crate::custom::CustomDoor;
 use crate::interact::{Action, Interactable};
 use crate::level::LevelObject;
+use crate::models;
 use crate::palette::Palette;
 use crate::world::{props, Flicker, Swing};
 
@@ -54,7 +55,53 @@ pub const CATALOG: &[KindDef] = &[
     KindDef { id: "note", label: "Notiz (lesbar)", class: KindClass::Interactive, half: Vec3::new(0.3, 0.6, 0.3) },
     KindDef { id: "keypad", label: "Eingabepad", class: KindClass::Interactive, half: Vec3::new(0.2, 0.3, 0.1) },
     KindDef { id: "door", label: "Tuer", class: KindClass::Interactive, half: Vec3::new(1.5, 1.2, 0.3) },
+    KindDef { id: "model", label: "3D-Modell (Blender)", class: KindClass::Solid, half: Vec3::new(0.7, 0.7, 0.7) },
 ];
+
+/// One adjustable number of a placed object, shown in the editor panel.
+pub struct FieldDef {
+    pub key: &'static str,
+    pub label: &'static str,
+    pub step: f32,
+    pub min: f32,
+    pub max: f32,
+}
+
+const F_W: FieldDef = FieldDef { key: "w", label: "Breite", step: 0.25, min: 0.1, max: 24.0 };
+const F_H: FieldDef = FieldDef { key: "h", label: "Hoehe", step: 0.25, min: 0.05, max: 14.0 };
+const F_D: FieldDef = FieldDef { key: "d", label: "Tiefe", step: 0.25, min: 0.1, max: 24.0 };
+const F_S: FieldDef = FieldDef { key: "s", label: "Groesse", step: 0.1, min: 0.2, max: 6.0 };
+const F_I: FieldDef = FieldDef { key: "i", label: "Helligkeit", step: 200.0, min: 0.0, max: 20000.0 };
+const F_RANGE: FieldDef = FieldDef { key: "range", label: "Reichweite", step: 1.0, min: 1.0, max: 40.0 };
+const F_VOXEL: FieldDef = FieldDef { key: "voxel", label: "Kollision (m)", step: 0.05, min: 0.1, max: 1.0 };
+const F_SCALE: FieldDef = FieldDef { key: "scale", label: "Massstab", step: 0.1, min: 0.1, max: 12.0 };
+const F_FLICKER: FieldDef = FieldDef { key: "flicker", label: "Flackern", step: 1.0, min: 0.0, max: 1.0 };
+const F_CLOTH: FieldDef = FieldDef { key: "cloth", label: "Tischtuch", step: 1.0, min: 0.0, max: 1.0 };
+
+static FIELDS_WH: [FieldDef; 2] = [F_W, F_H];
+static FIELDS_WD: [FieldDef; 2] = [F_W, F_D];
+static FIELDS_WH_D: [FieldDef; 3] = [F_W, F_H, F_D];
+static FIELDS_S: [FieldDef; 1] = [F_S];
+static FIELDS_I_FLICKER: [FieldDef; 2] = [F_I, F_FLICKER];
+static FIELDS_LIGHT: [FieldDef; 3] = [F_I, F_RANGE, F_FLICKER];
+static FIELDS_MODEL: [FieldDef; 2] = [F_SCALE, F_VOXEL];
+static FIELDS_CLOTH: [FieldDef; 1] = [F_CLOTH];
+static FIELDS_NONE: [FieldDef; 0] = [];
+
+/// The numbers the editor lets you change for `kind`.
+pub fn fields(kind: &str) -> &'static [FieldDef] {
+    match kind {
+        "block" | "plank" => &FIELDS_WH_D,
+        "crate" | "barrel" | "plant" => &FIELDS_S,
+        "rug" => &FIELDS_WD,
+        "curtain" | "door" => &FIELDS_WH,
+        "sconce" => &FIELDS_I_FLICKER,
+        "light" => &FIELDS_LIGHT,
+        "model" => &FIELDS_MODEL,
+        "round_table" => &FIELDS_CLOTH,
+        _ => &FIELDS_NONE,
+    }
+}
 
 pub fn find(id: &str) -> Option<&'static KindDef> {
     CATALOG.iter().find(|kind| kind.id == id)
@@ -107,6 +154,12 @@ pub fn default_object(id: &str, pos: Vec3) -> LevelObject {
         "door" => {
             object.set("w", "1.0");
             object.set("h", "2.1");
+        }
+        "model" => {
+            object.set("file", "");
+            object.set("scale", "1.0");
+            object.set("voxel", "0.25");
+            object.set("solid", "1");
         }
         _ => {}
     }
@@ -342,6 +395,48 @@ pub fn spawn_object(
                 "Code eingeben",
                 1.1,
             ));
+        }
+        "model" => {
+            let file = object.get("file").unwrap_or_default().to_string();
+            let scale = object.number("scale", 1.0).max(0.01);
+            let voxel = object.number("voxel", 0.25);
+            let solid = object.flag("solid", true);
+            if !file.is_empty() {
+                match models::scene(&file) {
+                    Some(scene) => {
+                        let hull = if solid {
+                            models::hull(&file, &*meshes, voxel)
+                        } else {
+                            Vec::new()
+                        };
+                        commands.entity(root).with_children(|parent| {
+                            parent.spawn((
+                                SceneRoot(scene),
+                                Transform::from_scale(Vec3::splat(scale)),
+                            ));
+                            // one collider per filled voxel run: only where the
+                            // model really has geometry, so a hollow room is
+                            // walkable inside
+                            for (center, half) in hull.iter() {
+                                parent.spawn((
+                                    Transform::from_translation(*center * scale),
+                                    SolidBox::new(*half * scale),
+                                ));
+                            }
+                        });
+                    }
+                    None => {
+                        // not loaded yet: show where it will be
+                        commands.entity(root).with_children(|parent| {
+                            parent.spawn((
+                                Mesh3d(meshes.add(Cuboid::new(0.6, 0.6, 0.6))),
+                                MeshMaterial3d(pal.bulb_dim.clone()),
+                                Transform::from_xyz(0.0, 0.3, 0.0),
+                            ));
+                        });
+                    }
+                }
+            }
         }
         "door" => {
             if let Some(leaf) = door_leaf {

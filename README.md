@@ -52,30 +52,46 @@ Schleifen, Umwandeln von Videospuren) stehen in
 
 Der Editor ist ein **eigenes Programm**, kein Teil des Spiels — er nutzt nur
 dieselbe Library (`src/lib.rs`), also dieselbe Palette, dieselben Props und
-dieselbe Hotel-Geometrie. Darum ist das, was du dort setzt, auch genau das, was
+dieselbe Hotel-Geometrie. Darum ist das, was du dort baust, auch genau das, was
 im Spiel steht.
 
 ```bash
 cargo run --release --bin editor
 ```
 
-* links: alle Objekte (Moebel, Waende/Bloecke, Licht, **Eingabepad**, **Tuer**)
-* rechts: Sprungmarken zu jedem Bereich des Hotels
-* `F5` speichert nach `assets/level/extras.lvl`, `F9` laedt neu
-* das Spiel liest diese Datei beim Aufbau des Hotels — nichts weiter zu tun
+Drei Dinge lassen sich bearbeiten:
+
+1. **Objekte setzen** — links die Bibliothek (Möbel, Wände, Licht, Eingabepad,
+   Tür, lesbare Notiz). Plätze frei wählbar, jede Etage.
+2. **Eigene 3D-Modelle** — alles aus `assets/models` (Blender-Export als
+   `.glb`) erscheint in der Liste *MODELLE*. Das Modell bekommt **automatisch
+   Kollision aus seinen Dreiecken**: ein hohler Raum ist innen begehbar, ein
+   Tisch blockiert nur seine Platte und Beine. Rastergröße im Panel einstellbar.
+   Ein Beispiel liegt bei: `assets/models/room_example.glb` (6 × 3 m Raum mit
+   Durchgang).
+3. **Die vorhandene Map** — Schalter *Hotelteile*. Damit lassen sich die
+   handgebauten Requisiten anklicken und
+   * **mit einem eigenen Modell ersetzen** (z. B. das Türblatt durch deine Tür —
+     sie schwingt weiter, weil Verhalten und Collider bleiben),
+   * **verschieben** (Pfeiltasten),
+   * **entfernen** (ganzes Objekt, nicht nur ein Teil).
+
+Gespeichert wird mit `F5` nach `assets/level/extras.lvl`, das Spiel liest die
+Datei beim Aufbau des Hotels. `F9` lädt sie neu.
 
 | Taste | Wirkung |
 |---|---|
 | `W A S D` + `Q`/`E` | fliegen (mit `Shift` schneller) |
 | rechte Maustaste | umsehen |
-| linke Maustaste | Objekt setzen / Objekt auswaehlen |
-| Pfeiltasten, `U`/`O` | ausgewaehltes Objekt verschieben |
-| `,` / `.` | ausgewaehltes Objekt drehen |
-| `C` / `Entf` | duplizieren / loeschen |
+| linke Maustaste | platzieren / anklicken |
+| Pfeiltasten, `U`/`O` | Auswahl verschieben |
+| `,` / `.` | Auswahl drehen |
+| `C` / `Entf` | duplizieren / löschen |
+| `F5` / `F9` | speichern / laden |
 
-Ein platziertes **Eingabepad** oeffnet im Spiel wirklich das Code-Fenster, eine
-platzierte **Tuer** schwingt auf und gibt den Weg frei: die Objekte bringen ihre
-Logik mit (`src/factory.rs` + `src/custom.rs`), nicht nur ihr Aussehen.
+Rechts liegen die Sprungmarken zu jeder Etage, die **Eigenschaften** der Auswahl
+(Breite, Höhe, Tiefe, Helligkeit, Maßstab, Kollisionsraster …) und die Aktionen
+für Hotelteile.
 
 ## Steuerung
 

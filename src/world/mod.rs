@@ -402,11 +402,18 @@ pub struct WorldPlugin;
 
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<LevelBuilt>().add_systems(
-            OnEnter(AppState::Title),
-            build_level.run_if(not_built),
-        )
-        .add_systems(Update, (animate_slides, animate_swings, flicker_lights, sway_props));
+        // the level is built in the title screen, but only once every imported
+        // model of the level file is loaded: their collision is generated from
+        // the loaded mesh, so they cannot come in later than the walls
+        app.init_resource::<LevelBuilt>()
+            .add_systems(
+                Update,
+                build_level
+                    .run_if(not_built)
+                    .run_if(crate::custom::models_ready)
+                    .run_if(in_state(AppState::Title)),
+            )
+            .add_systems(Update, (animate_slides, animate_swings, flicker_lights, sway_props));
     }
 }
 
@@ -422,6 +429,7 @@ fn build_level(
     mut built: ResMut<LevelBuilt>,
     mut rng: ResMut<Rng>,
     mut ambient: ResMut<AmbientLight>,
+    level: Res<crate::level::LevelFile>,
 ) {
     if built.0 {
         return;
@@ -429,6 +437,9 @@ fn build_level(
     // a little more fill than before: the rooms were drowning in black
     ambient.color = Color::srgb(0.46, 0.51, 0.60);
     ambient.brightness = 42.0;
+
+    // the editor and the game must hand out the same piece numbers
+    props::reset_parts();
 
     let mut b = BuildCtx::new();
     foyer::build(&mut commands, &mut b, &palette, &mut meshes, &assets, &mut rng);
@@ -438,7 +449,7 @@ fn build_level(
     b.finish(&mut commands, &mut meshes, "architecture");
 
     // whatever was placed in the level editor goes in on top of the hotel
-    crate::custom::spawn_level_objects(&mut commands, &mut meshes, &palette, &assets);
+    crate::custom::spawn_level_objects(&mut commands, &mut meshes, &palette, &assets, &level);
 
     built.0 = true;
 }
